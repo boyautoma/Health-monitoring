@@ -21,19 +21,18 @@ TOKEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".garmin_to
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
 
 
+def _has_garth(client):
+    return hasattr(client, 'garth') and client.garth is not None
+
+
 def _save_tokens(client):
+    if not _has_garth(client):
+        return
     try:
         client.garth.dump(TOKEN_DIR)
-    except Exception:
-        pass
-
-
-def _load_tokens(client):
-    try:
-        client.garth.load(TOKEN_DIR)
-        return True
-    except Exception:
-        return False
+        print("  Tokens saved")
+    except Exception as e:
+        print(f"  Could not save tokens: {e}")
 
 
 def connect():
@@ -43,17 +42,20 @@ def connect():
     password = os.environ.get("GARMIN_PASSWORD")
 
     # Try resume from saved tokens
-    try:
-        client = Garmin()
-        if _load_tokens(client):
+    token_files = os.listdir(TOKEN_DIR) if os.path.isdir(TOKEN_DIR) else []
+    if token_files:
+        try:
+            client = Garmin()
+            if _has_garth(client):
+                client.garth.load(TOKEN_DIR)
             client.login()
             _save_tokens(client)
             print("Resumed Garmin session from cached tokens")
             return client
-    except Exception as e:
-        print(f"Token resume failed: {e}")
-        print("Waiting 30s before email/password login...")
-        time.sleep(30)
+        except Exception as e:
+            print(f"Token resume failed: {e}")
+            print("Waiting 60s before password login (rate limit cooldown)...")
+            time.sleep(60)
 
     if not email or not password:
         print("ERROR: No cached tokens and GARMIN_EMAIL/GARMIN_PASSWORD not set")
@@ -61,16 +63,17 @@ def connect():
 
     for attempt in range(3):
         try:
+            print(f"Login attempt {attempt + 1}/3 with email/password...")
             client = Garmin(email, password)
             client.login()
             _save_tokens(client)
-            print("Logged in with email/password, tokens saved")
+            print("Logged in successfully")
             return client
         except Exception as e:
-            wait = 30 * (attempt + 1)
-            print(f"Login attempt {attempt + 1} failed: {e}")
+            wait = 60 * (attempt + 1)
+            print(f"  Failed: {e}")
             if attempt < 2:
-                print(f"Retrying in {wait}s...")
+                print(f"  Retrying in {wait}s...")
                 time.sleep(wait)
 
     print("ERROR: All login attempts failed")
