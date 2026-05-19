@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% from "_macros.html" import ring_gauge, score_color %}
+{% block title %}R&eacute;cup &amp; Sommeil{% endblock %}
+
+{% block content %}
+<!-- Score + composantes en ligne -->
+<div class="row g-2 mb-3">
+    <div class="col-auto">
+        <div class="d-flex align-items-center gap-2 p-2 bg-white rounded shadow-sm">
+            {% if score is not none %}
+            {{ ring_gauge(score, 100, 52, 5, score_color(level[0]), 'Récup') }}
+            {% else %}
+            {{ ring_gauge(None, 100, 52, 5, '#5a5a7a', 'Récup') }}
+            {% endif %}
+            <div class="lh-sm">
+                <div class="fw-bold small">R&eacute;cup</div>
+                <div class="text-muted" style="font-size:.7rem">{{ level[2] }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if today %}
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">HRV 7j</span>
+            <span class="mini-value {% if today.hrv_7day_avg and today.hrv_7day_avg < hrv_alert %}text-danger{% endif %}">
+                {{ today.hrv_7day_avg|round(0)|int if today.hrv_7day_avg else '—' }}<small>ms</small>
+            </span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">Sommeil</span>
+            <span class="mini-value">{{ today.sleep_score or '—' }}<small>/100</small></span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">Dur&eacute;e</span>
+            <span class="mini-value">
+                {% if today.sleep_duration_min %}{{ (today.sleep_duration_min // 60) }}h{{ "%02d"|format(today.sleep_duration_min % 60) }}{% else %}—{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">FC repos</span>
+            <span class="mini-value">{{ today.rhr or '—' }}<small>bpm</small></span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">Stress</span>
+            <span class="mini-value">{{ today.stress_avg or '—' }}<small>/100</small></span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Barres de progression -->
+{% if today %}
+<div class="card shadow-sm mb-3">
+    <div class="card-body p-2">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <small class="text-muted d-flex justify-content-between">
+                    <span>HRV (40%)</span>
+                    <span class="{% if today.hrv_7day_avg and today.hrv_7day_avg < hrv_alert %}text-danger fw-bold{% endif %}">
+                        {{ today.hrv_7day_avg|round(0)|int if today.hrv_7day_avg else '—' }} ms
+                    </span>
+                </small>
+                <div class="progress" style="height:6px;">
+                    {% set hrv_pct = ((today.hrv_7day_avg or 0) - 44) / (61 - 44) * 100 if today.hrv_7day_avg else 0 %}
+                    <div class="progress-bar bg-{{ 'danger' if hrv_pct < 30 else ('warning' if hrv_pct < 60 else 'success') }}"
+                         style="width:{{ [100, [0, hrv_pct]|max]|min }}%"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-flex justify-content-between"><span>Sommeil (30%)</span><span>{{ today.sleep_score or '—' }}/100</span></small>
+                <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-{{ 'danger' if (today.sleep_score or 0) < 50 else ('warning' if (today.sleep_score or 0) < 70 else 'success') }}"
+                         style="width:{{ today.sleep_score or 0 }}%"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-flex justify-content-between"><span>FC repos (15%)</span><span>{{ today.rhr or '—' }} bpm</span></small>
+                <div class="progress" style="height:6px;">
+                    {% set rhr_pct = [100, [0, 100 - ((today.rhr or 53) - 48) / (63 - 48) * 100]|max]|min %}
+                    <div class="progress-bar bg-{{ 'danger' if rhr_pct < 30 else ('warning' if rhr_pct < 60 else 'success') }}"
+                         style="width:{{ rhr_pct }}%"></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-flex justify-content-between"><span>Stress (15%)</span><span>{{ today.stress_avg or '—' }}/100</span></small>
+                <div class="progress" style="height:6px;">
+                    {% set stress_pct = [100, [0, 100 - (today.stress_avg or 50)]|max]|min %}
+                    <div class="progress-bar bg-{{ 'danger' if stress_pct < 30 else ('warning' if stress_pct < 60 else 'success') }}"
+                         style="width:{{ stress_pct }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Graphiques -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm"><div class="card-body p-2">
+            <h6 class="small text-muted mb-1">Score r&eacute;cup (30j)</h6>
+            <div style="height:130px"><canvas id="scoreChart"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm"><div class="card-body p-2">
+            <h6 class="small text-muted mb-1">HRV moy. 7j (30j)</h6>
+            <div style="height:130px"><canvas id="hrvRecChart"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm"><div class="card-body p-2">
+            <h6 class="small text-muted mb-1">Score sommeil (30j)</h6>
+            <div style="height:130px"><canvas id="sleepRecChart"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm"><div class="card-body p-2">
+            <h6 class="small text-muted mb-1">FC repos (30j)</h6>
+            <div style="height:130px"><canvas id="rhrRecChart"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-4">
+        <div class="card shadow-sm"><div class="card-body p-2">
+            <h6 class="small text-muted mb-1">Stress (30j)</h6>
+            <div style="height:130px"><canvas id="stressRecChart"></canvas></div>
+        </div></div>
+    </div>
+</div>
+
+<!-- Historique quotidien -->
+{% if history|length > 1 %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header py-2"><strong class="small">Historique quotidien</strong></div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:200px; overflow-y:auto">
+            <table class="table table-sm table-hover small mb-0">
+                <thead class="table-light" style="position:sticky; top:0">
+                    <tr>
+                        <th class="py-1">Date</th>
+                        <th class="py-1 text-center">R&eacute;cup</th>
+                        <th class="py-1 text-center">HRV 7j</th>
+                        <th class="py-1 text-center">FC repos</th>
+                        <th class="py-1 text-center">Sommeil</th>
+                        <th class="py-1 text-center">Stress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in history %}
+                    <tr>
+                        <td class="py-1">{{ r.date }}</td>
+                        <td class="py-1 text-center {% if r.recovery_score and r.recovery_score < 40 %}text-danger fw-bold{% elif r.recovery_score and r.recovery_score >= 70 %}text-success{% endif %}">
+                            {{ r.recovery_score or '—' }}
+                        </td>
+                        <td class="py-1 text-center {% if r.hrv_7day_avg and r.hrv_7day_avg < hrv_alert %}text-danger{% endif %}">
+                            {{ r.hrv_7day_avg|round(0)|int if r.hrv_7day_avg else '—' }}
+                        </td>
+                        <td class="py-1 text-center">{{ r.rhr or '—' }}</td>
+                        <td class="py-1 text-center">{{ r.sleep_score or '—' }}</td>
+                        <td class="py-1 text-center">{{ r.stress_avg or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Conseils -->
+{% if advice %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header py-2 bg-light"><strong class="small">Conseils du jour</strong></div>
+    <div class="card-body p-0">
+        <div class="accordion accordion-flush" id="advAcc">
+            {% for tip in advice %}
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2 small" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#adv{{ loop.index }}">
+                        <span class="advice-dot advice-{{ tip.category }} me-2"></span>
+                        {{ tip.title }}
+                    </button>
+                </h2>
+                <div id="adv{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#advAcc">
+                    <div class="accordion-body py-2 small">{{ tip.message }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Protocole post-course compact -->
+<div class="card shadow-sm border-info">
+    <div class="card-header py-1 bg-info text-white"><small class="fw-bold">Protocole post-course (tibias)</small></div>
+    <div class="card-body py-2 small">
+        <span class="me-3">&#x2744; Gla&ccedil;age 10-15min</span>
+        <span class="me-3">&#x1F9D8; Auto-massage 3-5min/jambe</span>
+        <span class="me-3">&#x1F9D8; &Eacute;tirements mollets+tibial</span>
+        <span class="me-3">&#x1F34C; Prot&eacute;ines+glucides dans 30min</span>
+        <span>&#x1F4A7; 500ml eau dans 1h</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const scoreData = {{ score_chart|safe }};
+    const hrvRecData = {{ hrv_chart|safe }};
+    const sleepRecData = {{ sleep_chart|safe }};
+    const rhrRecData = {{ rhr_chart|safe }};
+    const stressRecData = {{ stress_chart|safe }};
+
+    if (scoreData.length > 0)
+        createLineChart('scoreChart', scoreData.map(d=>d.date), scoreData.map(d=>d.value), '/100', '#00f19f');
+    if (hrvRecData.length > 0)
+        createLineChartWithThreshold('hrvRecChart', hrvRecData.map(d=>d.date), hrvRecData.map(d=>d.value), 'ms', '#00d4aa', {{ hrv_alert }}, '#ff4655');
+    if (sleepRecData.length > 0)
+        createLineChart('sleepRecChart', sleepRecData.map(d=>d.date), sleepRecData.map(d=>d.value), '/100', '#7c5cfc');
+    if (rhrRecData.length > 0)
+        createLineChart('rhrRecChart', rhrRecData.map(d=>d.date), rhrRecData.map(d=>d.value), 'bpm', '#ff8c42');
+    if (stressRecData.length > 0)
+        createLineChart('stressRecChart', stressRecData.map(d=>d.date), stressRecData.map(d=>d.value), '/100', '#ff4655');
+</script>
+{% endblock %}

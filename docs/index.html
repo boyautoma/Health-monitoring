@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AppCoach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">APPCOACH</div>
+            <div class="sync-badge" id="syncBadge">
+                <span class="sync-dot"></span>
+                <span id="syncTime">--:--</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sections -->
+    <main>
+
+        <!-- ===== RECOVERY ===== -->
+        <section class="page active" id="pageRecovery">
+            <div class="hero">
+                <div class="hero-date" id="heroDate">--</div>
+                <div class="hero-ring-wrap">
+                    <svg class="hero-ring" viewBox="0 0 220 220">
+                        <circle cx="110" cy="110" r="96" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="10"/>
+                        <circle class="hero-arc" id="heroArc" cx="110" cy="110" r="96" fill="none"
+                                stroke="#00f19f" stroke-width="10" stroke-linecap="round"
+                                stroke-dasharray="603.19" stroke-dashoffset="603.19"
+                                transform="rotate(-90 110 110)"/>
+                    </svg>
+                    <div class="hero-center">
+                        <span class="hero-value" id="heroValue">--</span>
+                        <span class="hero-pct">%</span>
+                    </div>
+                </div>
+                <div class="hero-label">RECOVERY</div>
+                <div class="hero-status" id="heroStatus">--</div>
+            </div>
+
+            <!-- Metric cards 2x2 -->
+            <div class="metrics-grid">
+                <div class="metric-card" data-metric="hrv">
+                    <div class="metric-ring-wrap">
+                        <svg class="metric-ring" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
+                                    stroke="#00d4aa" stroke-width="5" stroke-linecap="round"
+                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
+                                    transform="rotate(-90 32 32)" id="hrvArc"/>
+                        </svg>
+                        <span class="metric-ring-val" id="hrvVal">--</span>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">HRV</span>
+                        <span class="metric-sub" id="hrvSub">moy. 7j</span>
+                    </div>
+                </div>
+                <div class="metric-card" data-metric="rhr">
+                    <div class="metric-ring-wrap">
+                        <svg class="metric-ring" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
+                                    stroke="#ff8c42" stroke-width="5" stroke-linecap="round"
+                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
+                                    transform="rotate(-90 32 32)" id="rhrArc"/>
+                        </svg>
+                        <span class="metric-ring-val" id="rhrVal">--</span>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">FC REPOS</span>
+                        <span class="metric-sub">bpm</span>
+                    </div>
+                </div>
+                <div class="metric-card" data-metric="sleep">
+                    <div class="metric-ring-wrap">
+                        <svg class="metric-ring" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
+                                    stroke="#7c5cfc" stroke-width="5" stroke-linecap="round"
+                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
+                                    transform="rotate(-90 32 32)" id="sleepArc"/>
+                        </svg>
+                        <span class="metric-ring-val" id="sleepVal">--</span>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">SOMMEIL</span>
+                        <span class="metric-sub" id="sleepSub">/100</span>
+                    </div>
+                </div>
+                <div class="metric-card" data-metric="stress">
+                    <div class="metric-ring-wrap">
+                        <svg class="metric-ring" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
+                                    stroke="#ff4655" stroke-width="5" stroke-linecap="round"
+                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
+                                    transform="rotate(-90 32 32)" id="stressArc"/>
+                        </svg>
+                        <span class="metric-ring-val" id="stressVal">--</span>
+                    </div>
+                    <div class="metric-info">
+                        <span class="metric-label">STRESS</span>
+                        <span class="metric-sub">/100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Training readiness + VO2max -->
+            <div class="stats-row">
+                <div class="stat-pill">
+                    <span class="stat-label">Readiness</span>
+                    <span class="stat-value" id="readinessVal">--</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">VO2max</span>
+                    <span class="stat-value" id="vo2Val">--</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">VMA</span>
+                    <span class="stat-value" id="vmaVal">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SLEEP ===== -->
+        <section class="page" id="pageSleep">
+            <div class="section-header">
+                <h2>Sommeil</h2>
+                <span class="section-date" id="sleepDate">--</span>
+            </div>
+
+            <div class="sleep-hero">
+                <div class="sleep-ring-wrap">
+                    <svg class="sleep-ring" viewBox="0 0 160 160">
+                        <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="8"/>
+                        <circle class="sleep-hero-arc" id="sleepHeroArc" cx="80" cy="80" r="68" fill="none"
+                                stroke="#7c5cfc" stroke-width="8" stroke-linecap="round"
+                                stroke-dasharray="427.26" stroke-dashoffset="427.26"
+                                transform="rotate(-90 80 80)"/>
+                    </svg>
+                    <div class="sleep-center">
+                        <span class="sleep-score" id="sleepScore">--</span>
+                        <span class="sleep-score-label">SCORE</span>
+                    </div>
+                </div>
+                <div class="sleep-duration" id="sleepDuration">--</div>
+            </div>
+
+            <!-- Sleep stages -->
+            <div class="sleep-stages-wrap">
+                <div class="sleep-bar" id="sleepBar">
+                    <div class="sleep-seg deep" id="segDeep"></div>
+                    <div class="sleep-seg light" id="segLight"></div>
+                    <div class="sleep-seg rem" id="segRem"></div>
+                    <div class="sleep-seg awake" id="segAwake"></div>
+                </div>
+                <div class="sleep-legend">
+                    <div class="legend-item"><span class="dot deep"></span>Profond<span class="legend-val" id="legDeep">--</span></div>
+                    <div class="legend-item"><span class="dot light"></span>L&eacute;ger<span class="legend-val" id="legLight">--</span></div>
+                    <div class="legend-item"><span class="dot rem"></span>REM<span class="legend-val" id="legRem">--</span></div>
+                    <div class="legend-item"><span class="dot awake"></span>&Eacute;veil<span class="legend-val" id="legAwake">--</span></div>
+                </div>
+            </div>
+
+            <!-- Sleep trend chart -->
+            <div class="chart-card">
+                <div class="chart-title">Score sommeil — 30 jours</div>
+                <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- ===== PERFORMANCE ===== -->
+        <section class="page" id="pagePerf">
+            <div class="section-header">
+                <h2>Performance</h2>
+            </div>
+
+            <div class="perf-cards">
+                <div class="perf-big">
+                    <span class="perf-big-val" id="perfVo2">--</span>
+                    <span class="perf-big-label">VO2max</span>
+                </div>
+                <div class="perf-big">
+                    <span class="perf-big-val" id="perfVma">--</span>
+                    <span class="perf-big-label">VMA <small>km/h</small></span>
+                </div>
+            </div>
+
+            <!-- Weekly volume chart -->
+            <div class="chart-card">
+                <div class="chart-title">Volume hebdomadaire</div>
+                <div class="chart-wrap"><canvas id="volumeChart"></canvas></div>
+            </div>
+
+            <!-- Recent activities -->
+            <div class="activities-list" id="activitiesList">
+                <div class="chart-title">Activit&eacute;s r&eacute;centes</div>
+            </div>
+        </section>
+
+        <!-- ===== TRENDS ===== -->
+        <section class="page" id="pageTrends">
+            <div class="section-header">
+                <h2>Tendances</h2>
+                <span class="section-sub">30 derniers jours</span>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">R&eacute;cup&eacute;ration</div>
+                <div class="chart-wrap"><canvas id="recovChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">HRV <small>moy. 7j (ms)</small></div>
+                <div class="chart-wrap"><canvas id="hrvChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">FC repos <small>(bpm)</small></div>
+                <div class="chart-wrap"><canvas id="rhrChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Stress</div>
+                <div class="chart-wrap"><canvas id="stressChart"></canvas></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-page="pageRecovery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Recovery</span>
+        </button>
+        <button class="nav-btn" data-page="pageSleep">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span>Sommeil</span>
+        </button>
+        <button class="nav-btn" data-page="pagePerf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Perf</span>
+        </button>
+        <button class="nav-btn" data-page="pageTrends">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span>Trends</span>
+        </button>
+    </nav>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

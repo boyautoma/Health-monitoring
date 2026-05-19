@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Objectifs{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">Configuration de l'objectif</h4>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings') }}">
+                    <!-- Mode -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Type d'objectif</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="modeGeneral"
+                                   value="general" checked onchange="toggleRaceFields()">
+                            <label class="form-check-label" for="modeGeneral">
+                                Progression g&eacute;n&eacute;rale <small class="text-muted">(cycles de 8 semaines)</small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mode" id="modeRace"
+                                   value="race" onchange="toggleRaceFields()">
+                            <label class="form-check-label" for="modeRace">
+                                Pr&eacute;paration course <small class="text-muted">(plan p&eacute;riodis&eacute; avec taper)</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Param&egrave;tres course -->
+                    <div id="raceFields" style="display: none;">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="raceDistance" class="form-label">Distance de la course</label>
+                                <select class="form-select" id="raceDistance" name="race_distance">
+                                    <option value="10k">10 km</option>
+                                    <option value="semi">Semi-marathon (21.1 km)</option>
+                                    <option value="marathon">Marathon (42.2 km)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="raceDate" class="form-label">Date de la course</label>
+                                <input type="date" class="form-control" id="raceDate" name="race_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Jours par semaine -->
+                    <div class="mb-4">
+                        <label for="daysPerWeek" class="form-label fw-bold">Jours de course par semaine</label>
+                        <select class="form-select" id="daysPerWeek" name="days_per_week" style="max-width: 200px;">
+                            <option value="3" selected>3 jours</option>
+                            <option value="4">4 jours</option>
+                            <option value="5">5 jours</option>
+                        </select>
+                        <small class="text-muted">+ 2 s&eacute;ances de renforcement musculaire automatiquement int&eacute;gr&eacute;es</small>
+                    </div>
+
+                    <!-- Seuils personnalis&eacute;s -->
+                    <h6 class="fw-bold mt-4 mb-3">Seuils physiologiques</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="fcMax" class="form-label">FC max (bpm)</label>
+                            <input type="number" class="form-control" id="fcMax" name="fc_max"
+                                   value="{{ profile.fc_max or 198 }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fcRepos" class="form-label">FC repos (bpm)</label>
+                            <input type="number" class="form-control" id="fcRepos" name="fc_repos"
+                                   value="{{ profile.fc_repos or 53 }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Volume actuel</label>
+                            <input type="text" class="form-control" disabled
+                                   value="{{ profile.current_weekly_km or 22 }} km/sem">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        G&eacute;n&eacute;rer le plan d'entra&icirc;nement
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- R&eacute;sum&eacute; profil -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <strong>Ton profil</strong>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">VO2max</td><td class="text-end">{{ profile.vo2max or '—' }}</td></tr>
+                    <tr><td class="text-muted">VDOT</td><td class="text-end">{{ "%.1f"|format(profile.vdot) if profile.vdot else '—' }}</td></tr>
+                    <tr><td class="text-muted">Volume actuel</td><td class="text-end">{{ profile.current_weekly_km or '—' }} km/sem</td></tr>
+                    <tr><td class="text-muted">FC max</td><td class="text-end">{{ profile.fc_max or 198 }} bpm</td></tr>
+                    <tr><td class="text-muted">FC repos</td><td class="text-end">{{ profile.fc_repos or 53 }} bpm</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3 border-warning">
+            <div class="card-body">
+                <h6 class="text-warning">Contraintes p&eacute;riostites</h6>
+                <ul class="small mb-0">
+                    <li>FC footing : <strong>&lt; 155 bpm</strong> strict</li>
+                    <li>Volume : <strong>+10% max/semaine</strong></li>
+                    <li>Renforcement : <strong>2x/semaine obligatoire</strong></li>
+                    <li>Semaine r&eacute;cup : <strong>toutes les 3 semaines</strong></li>
+                    <li>80% du volume en Zone 2</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleRaceFields() {
+    const raceMode = document.getElementById('modeRace').checked;
+    document.getElementById('raceFields').style.display = raceMode ? 'block' : 'none';
+}
+</script>
+{% endblock %}

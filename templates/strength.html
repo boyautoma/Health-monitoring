@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Renforcement musculaire{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">Renforcement musculaire</h4>
+    <span class="badge bg-info">Semaine {{ week_num }} &mdash; {{ program.notes }}</span>
+</div>
+
+<!-- Alerte si manqu&eacute; -->
+{% if strength_alert %}
+<div class="alert alert-{{ strength_alert.level }}" role="alert">
+    <strong>{{ strength_alert.title }}</strong><br>
+    {{ strength_alert.message }}
+</div>
+{% endif %}
+
+<!-- Programme -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-purple text-white">
+        <strong>Programme anti-p&eacute;riostite + efficacit&eacute; de course</strong>
+        <span class="float-end">~{{ program.duration_min }} min &middot; 2x/semaine (mercredi &amp; vendredi)</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('strength') }}">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>Exercice</th>
+                            <th>S&eacute;ries</th>
+                            <th>R&eacute;p&eacute;titions</th>
+                            <th>Repos</th>
+                            <th>Cible</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ex in program.exercises %}
+                        <tr class="{% if ex.priority %}table-warning{% endif %}">
+                            <td>
+                                <input type="checkbox" class="form-check-input" name="exercises"
+                                       value="{{ ex.id }}" id="ex_{{ ex.id }}">
+                            </td>
+                            <td>
+                                <label for="ex_{{ ex.id }}" class="fw-bold mb-0">
+                                    {{ ex.name }}
+                                </label>
+                                {% if ex.priority %}
+                                <span class="badge bg-danger ms-1">Prioritaire</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">{{ ex.description }}</small>
+                            </td>
+                            <td class="text-center">{{ ex.sets }}</td>
+                            <td class="text-center">{{ ex.reps }}</td>
+                            <td class="text-center">{{ ex.rest_seconds }}s</td>
+                            <td><small>{{ ex.target }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes (optionnel)</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2"
+                          placeholder="Sensations, difficult&eacute;s, douleurs..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-success">
+                Enregistrer la s&eacute;ance
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Pourquoi ces exercices -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-danger">
+            <div class="card-body">
+                <h6 class="card-title text-danger">Pr&eacute;vention p&eacute;riostites</h6>
+                <ul class="small mb-0">
+                    <li><strong>Mollets excentriques</strong> : Renforce le complexe tibia/mollet et am&eacute;liore l'absorption des chocs &agrave; l'impact</li>
+                    <li><strong>Toe raises</strong> : Renforce directement le tibial ant&eacute;rieur, le muscle impliqu&eacute; dans la p&eacute;riostite</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-primary">
+            <div class="card-body">
+                <h6 class="card-title text-primary">Force &amp; puissance</h6>
+                <ul class="small mb-0">
+                    <li><strong>Squat gobelet</strong> : Renforce les quadriceps (identifi&eacute;s tr&egrave;s faibles au bilan 2025)</li>
+                    <li><strong>Fentes arri&egrave;re</strong> : Corrige le d&eacute;s&eacute;quilibre gauche/droite</li>
+                    <li><strong>Step-up</strong> : Force fonctionnelle sp&eacute;cifique course</li>
+                    <li><strong>Chaise murale</strong> : Endurance musculaire quadriceps</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100 border-success">
+            <div class="card-body">
+                <h6 class="card-title text-success">Stabilit&eacute;</h6>
+                <ul class="small mb-0">
+                    <li><strong>Pont fessier unilat&eacute;ral</strong> : Stabilit&eacute; du bassin, pr&eacute;vention des compensations</li>
+                    <li><strong>&Eacute;lastique abduction</strong> : Stabilise hanches et genoux, r&eacute;duit la pronation</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if last_session %}
+<div class="mt-4">
+    <small class="text-muted">
+        Derni&egrave;re s&eacute;ance enregistr&eacute;e : {{ last_session.date }}
+    </small>
+</div>
+{% endif %}
+{% endblock %}

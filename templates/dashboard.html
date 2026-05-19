@@ -1,0 +1,693 @@
+{% extends "base.html" %}
+{% from "_macros.html" import ring_gauge, score_color %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- === BANDEAU RÉSUMÉ === -->
+<div class="row g-2 mb-3">
+    <div class="col-auto">
+        <div class="d-flex align-items-center gap-2 p-2 bg-white rounded shadow-sm">
+            {% if recovery_score is not none %}
+            {{ ring_gauge(recovery_score, 100, 52, 5, score_color(recovery_level[0]), 'Récup') }}
+            {% else %}
+            {{ ring_gauge(None, 100, 52, 5, '#5a5a7a', 'Récup') }}
+            {% endif %}
+            <div class="lh-sm">
+                <div class="fw-bold small">R&eacute;cup</div>
+                <div class="text-muted" style="font-size:.7rem">{{ recovery_level[2] if recovery_score is not none else 'Sync !' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">VO2max</span>
+            <span class="mini-value">{{ profile.vo2max|round(0)|int if profile and profile.vo2max else '—' }}</span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">VMA</span>
+            <span class="mini-value">{{ (profile.vo2max / 3.5)|round(1) if profile and profile.vo2max else '—' }}<small>km/h</small></span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">VDOT</span>
+            <span class="mini-value">{{ vdot|round(1) if vdot else '—' }}</span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">HRV 7j</span>
+            <span class="mini-value {% if today_recovery and today_recovery.hrv_7day_avg and today_recovery.hrv_7day_avg < hrv_alert_threshold %}text-danger{% endif %}">
+                {{ today_recovery.hrv_7day_avg|round(0)|int if today_recovery and today_recovery.hrv_7day_avg else '—' }}<small>ms</small>
+            </span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">FC repos</span>
+            <span class="mini-value">{{ today_recovery.rhr if today_recovery and today_recovery.rhr else '—' }}<small>bpm</small></span>
+        </div>
+    </div>
+    <div class="col-auto">
+        <div class="mini-stat">
+            <span class="mini-label">Volume</span>
+            <span class="mini-value">{{ profile.current_weekly_km if profile and profile.current_weekly_km else '—' }}<small>km/s</small></span>
+        </div>
+    </div>
+</div>
+
+<!-- === ONGLETS === -->
+<ul class="nav nav-pills nav-fill mb-3" role="tablist">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-today">Aujourd'hui</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-trends">Tendances</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-activities">Activit&eacute;s</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ====== ONGLET AUJOURD'HUI ====== -->
+<div class="tab-pane fade show active" id="tab-today">
+
+    <!-- Score du jour + Streaks -->
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            {{ ring_gauge(gam.daily_score, 100, 76, 7, '#00f19f' if gam.daily_score >= 70 else ('#ffd700' if gam.daily_score >= 40 else '#ff4655'), 'Score') }}
+        </div>
+        <div class="col d-flex flex-wrap align-items-center gap-2">
+            {% if gam.streaks.recovery > 0 %}
+            <div class="streak-badge streak-green">
+                <span class="streak-count">{{ gam.streaks.recovery }}</span>
+                <span class="streak-text">j r&eacute;cup</span>
+            </div>
+            {% endif %}
+            {% if gam.streaks.sleep > 0 %}
+            <div class="streak-badge streak-purple">
+                <span class="streak-count">{{ gam.streaks.sleep }}</span>
+                <span class="streak-text">j sommeil</span>
+            </div>
+            {% endif %}
+            {% if not gam.streaks.recovery and not gam.streaks.sleep %}
+            <div class="text-muted small">Commence une s&eacute;rie en atteignant tes objectifs !</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ligne 1: Status physio + Séance du jour + Récap sortie -->
+    <div class="row g-2 mb-3">
+        <!-- Status vs objectif course -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-2">
+                    <strong class="small">Objectif : {{ gam.race_target.label }}</strong>
+                </div>
+                <div class="card-body py-2">
+                    {% if gam.daily_goals %}
+                    {% for g in gam.daily_goals %}
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>{{ g.name }}</span>
+                            <span>
+                                <span class="fw-bold {% if g.pct >= 100 %}text-success{% elif g.pct >= 80 %}text-warning{% endif %}">{{ g.fmt }}</span>
+                                <span class="text-muted">{{ g.target_fmt }}</span>
+                            </span>
+                        </div>
+                        <div class="progress" style="height:5px">
+                            <div class="progress-bar" style="width:{{ g.pct }}%; background:{{ g.color }}" role="progressbar"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-muted small text-center py-2">Synchronise pour voir tes stats</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Séance du jour + option vélo -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-2 {% if today_session %}bg-{{ today_session.session_type|session_color_class }}{% else %}bg-secondary{% endif %} text-white">
+                    <strong class="small">S&eacute;ance du jour</strong>
+                </div>
+                <div class="card-body py-2">
+                    {% if today_session %}
+                    <div class="fw-bold small mb-1" style="border-left: 3px solid {{ today_session.session_type|session_color }}; padding-left: 8px;">
+                        {{ today_session.title }}
+                    </div>
+                    <p class="small mb-2 text-muted">{{ today_session.description }}</p>
+                    <div class="d-flex flex-wrap gap-2 small">
+                        {% if today_session.distance_km %}<span>{{ today_session.distance_km }} km</span>{% endif %}
+                        {% if today_session.target_pace %}<span>{{ today_session.target_pace }}/km</span>{% endif %}
+                        {% if today_session.target_hr_zone %}<span>{{ today_session.target_hr_zone }}</span>{% endif %}
+                        {% if today_session.duration_min %}<span>~{{ today_session.duration_min }} min</span>{% endif %}
+                    </div>
+                    {% if today_session.adjusted %}
+                    <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">{{ today_session.adjustment_reason }}</div>
+                    {% endif %}
+                    {% if bike_sub %}
+                    <div class="alert alert-info py-1 px-2 mt-2 mb-0 small">
+                        <strong>Alternative v&eacute;lo :</strong> {{ bike_sub.description }}
+                    </div>
+                    <!-- Bouton remplacement vélo -->
+                    <div class="mt-2" id="bikeReplaceSection">
+                        <button class="btn btn-sm btn-outline-info w-100" type="button" onclick="document.getElementById('bikeForm').classList.toggle('d-none')">
+                            &#x1F6B4; J'ai fait du v&eacute;lo &agrave; la place
+                        </button>
+                        <form id="bikeForm" class="d-none mt-2" method="POST" action="{{ url_for('api_bike_replace') }}">
+                            <label class="small text-muted mb-1 d-block">Douleur tibiale :</label>
+                            <div class="d-flex gap-1 mb-2">
+                                {% for i in range(1, 6) %}
+                                <button type="button" class="btn btn-sm flex-fill pain-btn {% if i == 3 %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+                                        onclick="selectPain(this, {{ i }})" style="font-size:.75rem">
+                                    {{ i }}{% if i == 1 %} l&eacute;ger{% elif i == 5 %} fort{% endif %}
+                                </button>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="pain_level" id="painLevel" value="3">
+                            <button type="submit" class="btn btn-sm btn-info w-100">
+                                D&eacute;tecter le v&eacute;lo Garmin &amp; adapter le plan
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center text-muted py-3 small">
+                        <div style="font-size: 1.5rem;">&#x2615;</div>
+                        Repos ou <a href="{{ url_for('settings') }}">configure un plan</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Récap sortie / Alertes -->
+        <div class="col-md-4">
+            {% if today_activity %}
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-header py-2 bg-success text-white"><strong class="small">Sortie du jour</strong></div>
+                <div class="card-body py-2">
+                    <div class="row g-1 text-center small">
+                        <div class="col-6">
+                            <div class="text-muted">Distance</div>
+                            <div class="fw-bold">{{ today_activity.distance_km }} km</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted">Dur&eacute;e</div>
+                            <div class="fw-bold">{{ today_activity.duration_formatted }}</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-muted">Allure</div>
+                            <div class="fw-bold">{{ today_activity.pace_formatted }}/km</div>
+                        </div>
+                        {% if today_activity.avg_hr %}
+                        <div class="col-6">
+                            <div class="text-muted">FC moy</div>
+                            <div class="fw-bold">{{ today_activity.avg_hr }} bpm</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-2"><strong class="small">Alertes</strong></div>
+                <div class="card-body py-2">
+                    {% if alerts %}
+                    {% for alert in alerts %}
+                    <div class="alert alert-{{ alert.level }} py-1 px-2 mb-1 small">
+                        <strong>{{ alert.title }}</strong><br>{{ alert.message }}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-muted small text-center py-2">Rien &agrave; signaler</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ligne 2: Progression course + Sécurité périostites -->
+    <div class="row g-2 mb-3">
+        <!-- Progression course -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-2 bg-dark text-white">
+                    <strong class="small">Progression &rarr; {{ gam.race.target_label }}</strong>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row g-1 text-center small mb-2">
+                        <div class="col-4">
+                            <div class="text-muted">VO2max</div>
+                            <div class="fw-bold">{{ gam.race.vo2max or '—' }} <span class="text-muted fw-normal">/ {{ gam.race.target_vo2 }}</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted">VMA</div>
+                            <div class="fw-bold">{{ gam.race.vma or '—' }} <span class="text-muted fw-normal">/ {{ gam.race.target_vma }}</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-muted">Allure cible</div>
+                            <div class="fw-bold">{{ gam.race.target_allure }}/km</div>
+                        </div>
+                    </div>
+                    {% if gam.race.semi or gam.race.ten_k or gam.race.five_k %}
+                    <div class="small fw-bold mb-1">Pr&eacute;dictions actuelles</div>
+                    <div class="d-flex flex-wrap gap-2 small mb-2">
+                        {% if gam.race.five_k %}<span class="badge bg-secondary">5K : {{ gam.race.five_k.time }} ({{ gam.race.five_k.pace }}/km)</span>{% endif %}
+                        {% if gam.race.ten_k %}<span class="badge bg-secondary">10K : {{ gam.race.ten_k.time }} ({{ gam.race.ten_k.pace }}/km)</span>{% endif %}
+                        {% if gam.race.semi %}<span class="badge bg-primary">Semi : {{ gam.race.semi.time }} ({{ gam.race.semi.pace }}/km)</span>{% endif %}
+                        {% if gam.race.marathon %}<span class="badge bg-dark">Marathon : {{ gam.race.marathon.time }} ({{ gam.race.marathon.pace }}/km)</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if gam.race.vdot_current %}
+                    <div class="small text-muted mb-1">
+                        VDOT actuel : <strong>{{ gam.race.vdot_current }}</strong>
+                        {% if gam.race.vdot_projected %}
+                        &rarr; Projet&eacute; : <strong class="text-success">{{ gam.race.vdot_projected }}</strong>
+                        <span class="text-muted">(+{{ gam.race.projected_gain }} pts sur 12 sem.)</span>
+                        {% endif %}
+                    </div>
+                    <div class="progress" style="height:6px">
+                        {% set race_pct = ((gam.race.vdot_current / gam.race.target_vo2) * 100)|round|int %}
+                        <div class="progress-bar bg-primary" style="width:{{ [race_pct, 100]|min }}%" role="progressbar"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span>{{ gam.race.vdot_current }}</span>
+                        <span>Cible : {{ gam.race.target_vo2 }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sécurité périostites -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-2 bg-{{ gam.periostitis.volume_level }} text-white">
+                    <strong class="small">S&eacute;curit&eacute; p&eacute;riostites</strong>
+                </div>
+                <div class="card-body py-2">
+                    <!-- Volume -->
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Volume semaine</span>
+                        <span class="fw-bold {% if not gam.periostitis.volume_ok %}text-danger{% else %}text-success{% endif %}">
+                            {{ gam.periostitis.km_this_week }} km
+                            {% if gam.periostitis.safe_max_km %}/ {{ gam.periostitis.safe_max_km }} km max{% endif %}
+                        </span>
+                    </div>
+                    {% if gam.periostitis.safe_max_km %}
+                    <div class="progress mb-2" style="height:6px">
+                        {% set vol_pct = ((gam.periostitis.km_this_week / gam.periostitis.safe_max_km) * 100)|round|int %}
+                        <div class="progress-bar bg-{{ 'danger' if vol_pct > 100 else 'success' }}" style="width:{{ [vol_pct, 100]|min }}%" role="progressbar"></div>
+                    </div>
+                    {% endif %}
+                    <div class="small text-muted mb-2">
+                        Semaine pr&eacute;c&eacute;dente : {{ gam.periostitis.km_last_week }} km
+                        (r&egrave;gle : max +10%/sem.)
+                    </div>
+                    <!-- Renfo -->
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Renforcement</span>
+                        <span class="badge bg-{{ gam.periostitis.strength_level }}">
+                            {{ gam.periostitis.strength_count }}/2 cette semaine
+                        </span>
+                    </div>
+                    {% if gam.periostitis.days_since_strength is not none %}
+                    <div class="small text-muted mb-2">
+                        Dernier renfo : il y a {{ gam.periostitis.days_since_strength }} jour{{ 's' if gam.periostitis.days_since_strength > 1 }}
+                    </div>
+                    {% endif %}
+                    <!-- Plafond FC -->
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Plafond FC footing</span>
+                        <span class="fw-bold">&le; {{ gam.periostitis.fc_ceiling }} bpm</span>
+                    </div>
+                    {% if gam.periostitis.hr_violations > 0 %}
+                    <div class="small text-danger">
+                        {{ gam.periostitis.hr_violations }} sortie{{ 's' if gam.periostitis.hr_violations > 1 }} au-dessus du plafond cette semaine
+                    </div>
+                    {% else %}
+                    <div class="small text-success">FC respect&eacute;e sur toutes les sorties</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Objectifs semaine -->
+    <div class="row g-2 mb-3">
+        {% for g in gam.weekly_goals %}
+        <div class="col-4">
+            <div class="card shadow-sm">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-bold">{{ g.name }}</span>
+                        <span class="badge {% if g.pct >= 100 %}bg-success{% elif g.pct >= 50 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ g.pct }}%</span>
+                    </div>
+                    <div class="progress mb-1" style="height:8px">
+                        <div class="progress-bar" style="width:{{ g.pct }}%; background:{{ g.color }}" role="progressbar"></div>
+                    </div>
+                    <div class="text-muted small">{{ g.value }} {{ g.unit }} / {{ g.target }} {{ g.unit }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Efficacité cardiaque Z2 -->
+    {% if gam.cardiac.runs|length >= 2 %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold">Progression Z2</span>
+                {% if gam.cardiac.improvement and gam.cardiac.improvement > 0 %}
+                <span class="badge bg-success">+{{ gam.cardiac.improvement }}% plus rapide</span>
+                {% elif gam.cardiac.improvement %}
+                <span class="badge bg-danger">{{ gam.cardiac.improvement }}%</span>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-around text-center small mb-2">
+                <div>
+                    <div class="text-muted">Premi&egrave;re sortie</div>
+                    <div class="fw-bold">{{ gam.cardiac.first_run.pace_fmt }}/km</div>
+                    <div class="text-muted">@ {{ gam.cardiac.first_run.hr }} bpm</div>
+                </div>
+                <div class="d-flex align-items-center text-muted">&rarr;</div>
+                <div>
+                    <div class="text-muted">Derni&egrave;re sortie</div>
+                    <div class="fw-bold {% if gam.cardiac.improvement and gam.cardiac.improvement > 0 %}text-success{% endif %}">{{ gam.cardiac.last_run.pace_fmt }}/km</div>
+                    <div class="text-muted">@ {{ gam.cardiac.last_run.hr }} bpm</div>
+                </div>
+            </div>
+            <div style="height:80px"><canvas id="cardiacChart"></canvas></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Conseils (accordéon compact) -->
+    {% if advice %}
+    <div class="accordion accordion-flush" id="adviceAcc">
+        {% for tip in advice %}
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#advice{{ loop.index }}">
+                    {{ tip.title }}
+                </button>
+            </h2>
+            <div id="advice{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#adviceAcc">
+                <div class="accordion-body py-2 small">{{ tip.message }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ====== ONGLET TENDANCES ====== -->
+<div class="tab-pane fade" id="tab-trends">
+
+    <!-- Bilan 7 jours gamifié -->
+    {% if gam.trends.metrics %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <strong class="small">Bilan 7 jours</strong>
+            <span class="badge bg-{{ gam.trends.color }}">{{ gam.trends.label }}</span>
+        </div>
+        <div class="card-body py-2">
+            <div class="row g-2 mb-2">
+                {% for m in gam.trends.metrics %}
+                <div class="col">
+                    <div class="text-center">
+                        <div class="small text-muted">{{ m.name }}</div>
+                        <div class="fw-bold">{{ m.avg_7d if m.avg_7d is not none else '—' }}<small class="text-muted"> {{ m.unit }}</small></div>
+                        <span class="badge bg-{{ m.color }} mt-1" style="font-size:.65rem">{{ m.label }}</span>
+                        <div class="small text-muted mt-1">Cible : {{ m.target }}{{ m.unit }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <!-- Conseils d'amélioration -->
+            {% set tips_to_show = [] %}
+            {% for m in gam.trends.metrics %}
+                {% if m.tip and m.rate != 'great' %}
+                    {% if tips_to_show.append(m) %}{% endif %}
+                {% endif %}
+            {% endfor %}
+            {% if tips_to_show %}
+            <hr class="my-2">
+            <div class="small fw-bold mb-1">Conseils pour progresser</div>
+            {% for m in tips_to_show %}
+            <div class="d-flex align-items-start gap-2 mb-1 small">
+                <span class="badge bg-{{ m.color }} mt-1" style="min-width:18px; font-size:.6rem">{{ m.icon }}</span>
+                <div><strong>{{ m.name }} :</strong> {{ m.tip }}</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <hr class="my-2">
+            <div class="small text-success text-center">Toutes tes m&eacute;triques sont au top, continue !</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Graphiques 2x2 -->
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Volume hebdo (km)</h6>
+                <div style="height:130px"><canvas id="volumeChart"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">HRV moy. 7j (ms)</h6>
+                <div style="height:130px"><canvas id="hrvChart"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">FC repos (bpm)</h6>
+                <div style="height:130px"><canvas id="rhrChart"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Score sommeil (/100)</h6>
+                <div style="height:130px"><canvas id="sleepChart"></canvas></div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- Historique quotidien -->
+    {% if recovery_history %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-2"><strong class="small">Historique quotidien</strong></div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height:220px; overflow-y:auto">
+                <table class="table table-sm table-hover small mb-0">
+                    <thead class="table-light" style="position:sticky; top:0">
+                        <tr>
+                            <th class="py-1">Date</th>
+                            <th class="py-1 text-center">R&eacute;cup</th>
+                            <th class="py-1 text-center">HRV 7j</th>
+                            <th class="py-1 text-center">FC repos</th>
+                            <th class="py-1 text-center">Sommeil</th>
+                            <th class="py-1 text-center">Stress</th>
+                            <th class="py-1 text-center">Readiness</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in recovery_history %}
+                        <tr>
+                            <td class="py-1">{{ r.date }}</td>
+                            <td class="py-1 text-center {% if r.recovery_score and r.recovery_score < 40 %}text-danger{% elif r.recovery_score and r.recovery_score >= 70 %}text-success{% endif %}">
+                                {{ r.recovery_score or '—' }}
+                            </td>
+                            <td class="py-1 text-center {% if r.hrv_7day_avg and r.hrv_7day_avg < hrv_alert_threshold %}text-danger{% endif %}">
+                                {{ r.hrv_7day_avg|round(0)|int if r.hrv_7day_avg else '—' }}
+                            </td>
+                            <td class="py-1 text-center">{{ r.rhr or '—' }}</td>
+                            <td class="py-1 text-center">{{ r.sleep_score or '—' }}</td>
+                            <td class="py-1 text-center">{{ r.stress_avg or '—' }}</td>
+                            <td class="py-1 text-center">{{ r.training_readiness or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Allures + Prédictions compactes -->
+    <div class="row g-2">
+        {% if paces %}
+        <div class="col-md-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Allures (VDOT {{ vdot|round(0)|int if vdot else '?' }})</h6>
+                <table class="table table-sm table-borderless mb-0 small">
+                    {% for key, pace in paces.items() %}
+                    <tr>
+                        <td class="fw-bold py-0">{{ pace.name }}</td>
+                        <td class="text-end py-0">{{ pace.pace_fast }} - {{ pace.pace_slow }}/km</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div></div>
+        </div>
+        {% endif %}
+        {% if predictions %}
+        <div class="col-md-6">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Pr&eacute;dictions de course</h6>
+                <table class="table table-sm table-borderless mb-0 small">
+                    {% for race, data in predictions.items() %}
+                    <tr>
+                        <td class="fw-bold py-0">{{ race }}</td>
+                        <td class="text-end py-0">{{ data.time }}</td>
+                        <td class="text-end py-0 text-muted">{{ data.pace }}/km</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ====== ONGLET ACTIVITÉS + PROGRESSION ====== -->
+<div class="tab-pane fade" id="tab-activities">
+    {% if activities %}
+    <!-- Graphiques de progression -->
+    <div class="row g-2 mb-3">
+        <div class="col-4">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Allure moy.</h6>
+                <div style="height:120px"><canvas id="paceChart"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-4">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">Distance</h6>
+                <div style="height:120px"><canvas id="distChart"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-4">
+            <div class="card shadow-sm"><div class="card-body p-2">
+                <h6 class="small text-muted mb-1">FC moy.</h6>
+                <div style="height:120px"><canvas id="fcChart"></canvas></div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- Tableau activités -->
+    <div class="table-responsive" style="max-height:250px; overflow-y:auto">
+        <table class="table table-sm table-hover small">
+            <thead><tr>
+                <th>Date</th><th>Distance</th><th>Dur&eacute;e</th><th>Allure</th><th>FC moy</th><th>FC max</th>
+            </tr></thead>
+            <tbody>
+                {% for act in activities %}
+                <tr>
+                    <td>{{ act.activity_date[:10] if act.activity_date else '—' }}</td>
+                    <td>{{ act.distance_km }} km</td>
+                    <td>{{ act.duration_formatted }}</td>
+                    <td>{{ act.pace_formatted }}/km</td>
+                    <td>{{ act.avg_hr or '—' }}</td>
+                    <td>{{ act.max_hr or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4">Aucune activit&eacute;. Synchronise tes donn&eacute;es Garmin.</p>
+    {% endif %}
+</div>
+
+</div><!-- /tab-content -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Graphique allure Z2 (onglet Aujourd'hui — visible par défaut)
+    (function() {
+        const cardiacData = {{ gam.cardiac.runs|tojson|safe }};
+        if (cardiacData.length >= 2) {
+            const ctx = document.getElementById('cardiacChart');
+            if (!ctx) return;
+            const paces = cardiacData.map(d => d.pace_min);
+            const hrs = cardiacData.map(d => d.hr);
+            const opts = _baseOptions(paces, 'min/km');
+            opts.scales.y.reverse = true; // plus bas = plus rapide = en haut
+            opts.plugins.tooltip.callbacks.label = function(ctx) {
+                const run = cardiacData[ctx.dataIndex];
+                return run.pace_fmt + '/km @ ' + run.hr + 'bpm';
+            };
+            new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: cardiacData.map(d => d.date),
+                    datasets: [{
+                        data: paces,
+                        borderColor: '#00f19f',
+                        backgroundColor: '#00f19f15',
+                        borderWidth: 2, pointRadius: 3, pointHoverRadius: 6,
+                        fill: true, tension: 0.3,
+                    }],
+                },
+                options: opts,
+            });
+        }
+    })();
+
+    // Charger les graphiques Tendances au clic
+    let trendsLoaded = false;
+    document.querySelector('a[href="#tab-trends"]').addEventListener('shown.bs.tab', function() {
+        if (trendsLoaded) return;
+        trendsLoaded = true;
+        const volumeData = {{ weekly_volumes|safe }};
+        const hrvData = {{ hrv_chart|safe }};
+        const rhrData = {{ rhr_chart|safe }};
+        const sleepData = {{ sleep_chart|safe }};
+        if (Object.keys(volumeData).length > 0)
+            createBarChart('volumeChart', Object.keys(volumeData), Object.values(volumeData), 'km', '#4ea8de');
+        if (hrvData.length > 0)
+            createLineChartWithThreshold('hrvChart', hrvData.map(d=>d.date), hrvData.map(d=>d.value), 'ms', '#00d4aa', {{ hrv_alert_threshold }}, '#ff4655');
+        if (rhrData.length > 0)
+            createLineChart('rhrChart', rhrData.map(d=>d.date), rhrData.map(d=>d.value), 'bpm', '#ff8c42');
+        if (sleepData.length > 0)
+            createLineChart('sleepChart', sleepData.map(d=>d.date), sleepData.map(d=>d.value), '/100', '#7c5cfc');
+    });
+
+    // Charger les graphiques Activités au clic
+    let activitiesLoaded = false;
+    document.querySelector('a[href="#tab-activities"]').addEventListener('shown.bs.tab', function() {
+        if (activitiesLoaded) return;
+        activitiesLoaded = true;
+        const paceData = {{ pace_chart|safe }};
+        const distData = {{ dist_chart|safe }};
+        const fcData = {{ fc_chart|safe }};
+        if (paceData.length > 0)
+            createLineChart('paceChart', paceData.map(d=>d.date), paceData.map(d=>d.value), 'min/km', '#ff4655');
+        if (distData.length > 0)
+            createBarChart('distChart', distData.map(d=>d.date), distData.map(d=>d.value), 'km', '#00f19f');
+        if (fcData.length > 0)
+            createLineChart('fcChart', fcData.map(d=>d.date), fcData.map(d=>d.value), 'bpm', '#ff8c42');
+    });
+
+    function selectPain(btn, level) {
+        document.getElementById('painLevel').value = level;
+        document.querySelectorAll('.pain-btn').forEach(b => {
+            b.classList.remove('btn-success', 'btn-warning', 'btn-danger');
+            b.classList.add('btn-outline-secondary');
+        });
+        if (level <= 2) btn.classList.replace('btn-outline-secondary', 'btn-success');
+        else if (level <= 3) btn.classList.replace('btn-outline-secondary', 'btn-warning');
+        else btn.classList.replace('btn-outline-secondary', 'btn-danger');
+    }
+</script>
+{% endblock %}

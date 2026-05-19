@@ -1,0 +1,14 @@
+[
+  {"date":"2026-05-18","name":"Footing Z2","type":"running","distance_km":8.2,"duration_min":52,"avg_pace":"6:20","avg_hr":148,"max_hr":158,"calories":520},
+  {"date":"2026-05-16","name":"Intervalles 6x1000m","type":"running","distance_km":10.5,"duration_min":58,"avg_pace":"5:31","avg_hr":165,"max_hr":185,"calories":680},
+  {"date":"2026-05-14","name":"Footing récup","type":"running","distance_km":6.0,"duration_min":40,"avg_pace":"6:40","avg_hr":140,"max_hr":152,"calories":380},
+  {"date":"2026-05-12","name":"Sortie longue","type":"running","distance_km":14.2,"duration_min":92,"avg_pace":"6:29","avg_hr":150,"max_hr":162,"calories":920},
+  {"date":"2026-05-10","name":"Footing Z2","type":"running","distance_km":7.5,"duration_min":48,"avg_pace":"6:24","avg_hr":146,"max_hr":155,"calories":480},
+  {"date":"2026-05-08","name":"Tempo 5km","type":"running","distance_km":9.0,"duration_min":50,"avg_pace":"5:33","avg_hr":162,"max_hr":178,"calories":610},
+  {"date":"2026-05-06","name":"Footing Z2","type":"running","distance_km":7.0,"duration_min":45,"avg_pace":"6:26","avg_hr":147,"max_hr":156,"calories":450},
+  {"date":"2026-05-04","name":"Sortie longue","type":"running","distance_km":12.8,"duration_min":84,"avg_pace":"6:34","avg_hr":149,"max_hr":160,"calories":840},
+  {"date":"2026-05-02","name":"Footing récup","type":"running","distance_km":5.5,"duration_min":37,"avg_pace":"6:44","avg_hr":138,"max_hr":150,"calories":350},
+  {"date":"2026-04-30","name":"Intervalles 5x1000m","type":"running","distance_km":9.8,"duration_min":55,"avg_pace":"5:37","avg_hr":164,"max_hr":184,"calories":650},
+  {"date":"2026-04-28","name":"Footing Z2","type":"running","distance_km":7.8,"duration_min":50,"avg_pace":"6:25","avg_hr":147,"max_hr":156,"calories":490},
+  {"date":"2026-04-26","name":"Sortie longue","type":"running","distance_km":13.5,"duration_min":88,"avg_pace":"6:31","avg_hr":150,"max_hr":161,"calories":880}
+]

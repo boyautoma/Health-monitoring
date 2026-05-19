@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Plan{% endblock %}
+
+{% block content %}
+{% if not plan %}
+<div class="text-center py-5">
+    <div style="font-size: 3rem;">&#x1F3C3;</div>
+    <h5 class="text-muted mt-2">Aucun plan actif</h5>
+    <a href="{{ url_for('settings') }}" class="btn btn-primary mt-2">Configurer mon objectif</a>
+</div>
+{% else %}
+
+<!-- En-tête compact -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <strong>
+            {% if plan.mode == 'race' %}
+            {{ plan.race_distance|upper }} &mdash; {{ plan.race_date }}
+            {% else %}
+            Progression g&eacute;n&eacute;rale
+            {% endif %}
+        </strong>
+        <span class="badge bg-info ms-2">{{ plan.days_per_week }}j/sem</span>
+        {% if recovery_score is not none %}
+        <span class="badge bg-{{ 'success' if recovery_score >= 75 else ('warning' if recovery_score >= 50 else 'danger') }} ms-1">
+            R&eacute;cup {{ recovery_score }}
+        </span>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary btn-sm">Reg&eacute;n&eacute;rer</a>
+</div>
+
+<!-- Historique des adaptations -->
+{% if adaptations %}
+<details class="mb-2">
+    <summary class="small text-primary" style="cursor:pointer">
+        <span class="badge bg-info">{{ adaptations|length }}</span> adaptations r&eacute;centes
+    </summary>
+    <div class="card mt-1" style="max-height:150px; overflow-y:auto;">
+        <div class="card-body p-2">
+            {% for a in adaptations %}
+            <div class="d-flex gap-2 align-items-start mb-1" style="font-size:.7rem">
+                <span class="text-muted" style="white-space:nowrap">{{ a.date }}</span>
+                <span class="badge bg-{{ 'warning' if a.adaptation_type == 'volume_adjust' else ('info' if a.adaptation_type == 'vdot_recalibrate' else ('danger' if a.adaptation_type == 'missed_session' else 'secondary')) }}" style="font-size:.6rem">
+                    {{ a.adaptation_type|replace('_', ' ')|capitalize }}
+                </span>
+                <span class="text-muted">{{ a.description }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</details>
+{% endif %}
+
+<!-- Légende compacte -->
+<div class="mb-2">
+    <span class="badge" style="background:#00f19f; color:#0f0f23">Z2</span>
+    <span class="badge" style="background:#ff8c42; color:#0f0f23">Tempo</span>
+    <span class="badge" style="background:#ff4655">Fractionn&eacute;</span>
+    <span class="badge" style="background:#4ea8de; color:#0f0f23">Longue</span>
+    <span class="badge" style="background:#7c5cfc">Renfo</span>
+    <span class="badge" style="background:rgba(255,255,255,0.08)">Repos</span>
+</div>
+
+<!-- Navigation semaine -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <button class="btn btn-sm btn-outline-secondary" onclick="showWeek(currentWeek - 1)" id="btnPrev">&larr; Pr&eacute;c.</button>
+    <strong id="weekTitle">Semaine {{ current_week }}</strong>
+    <button class="btn btn-sm btn-outline-secondary" onclick="showWeek(currentWeek + 1)" id="btnNext">Suiv. &rarr;</button>
+</div>
+
+<!-- Semaines (une seule visible à la fois) -->
+{% for week in weeks %}
+<div class="week-panel {% if week.week_number == current_week %}d-block{% else %}d-none{% endif %}"
+     data-week="{{ week.week_number }}">
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span>
+            <span class="badge bg-{{ 'secondary' if week.phase == 'base' else ('info' if week.phase == 'build' else ('warning' if week.phase == 'peak' else ('success' if week.phase == 'taper' else 'light'))) }}">
+                {{ week.phase|capitalize }}
+            </span>
+            {% if week.week_number == current_week %}
+            <span class="badge bg-dark ms-1">Cette semaine</span>
+            {% endif %}
+        </span>
+        <small class="text-muted">{{ week.total_km }} km &middot; {{ week.run_count }} courses &middot; {{ week.strength_count }} renfo</small>
+    </div>
+
+    <div class="row g-2">
+        {% for session in week.sessions %}
+        <div class="col-12 col-sm-6 col-lg">
+            {% set is_completed = session.completed %}
+            {% set is_missed = session.missed %}
+            {% set is_today = session.scheduled_date == today_str %}
+            <div class="session-card{% if is_missed %} opacity-50{% endif %}{% if is_today %} border-info{% endif %}"
+                 style="border-left: 4px solid {{ (('#00f19f' if is_completed else ('#ff4655' if is_missed else session.session_type|session_color))) }};">
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">
+                        {{ session.day_of_week|day_name }}
+                        {% if session.scheduled_date %}
+                        <span style="font-size:.6rem"> {{ session.scheduled_date[5:] }}</span>
+                        {% endif %}
+                    </small>
+                    <span>
+                        {% if is_completed %}
+                        <span class="badge" style="background:#00f19f; color:#0f0f23; font-size:.6rem">&#10003;</span>
+                        {% elif is_missed %}
+                        <span class="badge bg-danger" style="font-size:.6rem">Manqu&eacute;e</span>
+                        {% elif is_today %}
+                        <span class="badge bg-info" style="font-size:.6rem">Aujourd'hui</span>
+                        {% endif %}
+                        {% if session.adjusted %}
+                        <span class="badge bg-warning text-dark" style="font-size:.6rem">Adapt&eacute;</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="fw-bold small{% if is_missed %} text-decoration-line-through{% endif %}">{{ session.title }}</div>
+                {% if session.session_type not in ['rest'] %}
+                <div class="d-flex gap-2 mt-1 text-muted" style="font-size:.7rem;">
+                    {% if session.distance_km %}<span>{{ session.distance_km }}km</span>{% endif %}
+                    {% if is_completed and session.actual_distance_km %}
+                    <span style="color:#00f19f">&#8594; {{ session.actual_distance_km }}km r&eacute;el</span>
+                    {% endif %}
+                    {% if session.target_pace %}<span>{{ session.target_pace }}/km</span>{% endif %}
+                    {% if session.target_hr_zone %}<span>{{ session.target_hr_zone }}</span>{% endif %}
+                </div>
+                {% if session.original_distance_km and session.original_distance_km != session.distance_km %}
+                <div style="font-size:.6rem" class="text-muted mt-1">
+                    Pr&eacute;vu initialement : {{ session.original_distance_km }} km
+                </div>
+                {% endif %}
+                {% endif %}
+                <details class="mt-1"><summary class="small text-primary" style="font-size:.7rem">D&eacute;tails</summary>
+                    <small class="text-muted" style="font-size:.7rem">{{ session.description }}</small>
+                    {% if session.adjustment_reason %}
+                    <div style="font-size:.65rem; color:#ff8c42" class="mt-1">&#9888; {{ session.adjustment_reason }}</div>
+                    {% endif %}
+                </details>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+<!-- Voir toutes les semaines -->
+<div class="text-center mt-3">
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleAll()" id="btnAll">Voir toutes les semaines</button>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentWeek = {{ current_week }};
+    const totalWeeks = {{ weeks|length }};
+    let showAll = false;
+
+    function showWeek(n) {
+        if (n < 1 || n > totalWeeks) return;
+        document.querySelectorAll('.week-panel').forEach(el => el.classList.add('d-none'));
+        const target = document.querySelector(`.week-panel[data-week="${n}"]`);
+        if (target) { target.classList.remove('d-none'); target.classList.add('d-block'); }
+        currentWeek = n;
+        document.getElementById('weekTitle').textContent = `Semaine ${n}`;
+        document.getElementById('btnPrev').disabled = n <= 1;
+        document.getElementById('btnNext').disabled = n >= totalWeeks;
+        showAll = false;
+        document.getElementById('btnAll').textContent = 'Voir toutes les semaines';
+    }
+
+    function toggleAll() {
+        showAll = !showAll;
+        document.querySelectorAll('.week-panel').forEach(el => {
+            el.classList.toggle('d-none', !showAll);
+            el.classList.toggle('d-block', showAll);
+            if (showAll) el.classList.add('mb-3');
+        });
+        document.getElementById('btnAll').textContent = showAll ? 'Semaine actuelle' : 'Voir toutes les semaines';
+        if (!showAll) showWeek({{ current_week }});
+    }
+</script>
+{% endblock %}
