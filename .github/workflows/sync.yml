@@ -21,11 +21,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Cache Garmin tokens
-        uses: actions/cache@v4
-        with:
-          path: .garmin_tokens
-          key: garmin-tokens
+      - name: Restore Garmin tokens from secrets
+        env:
+          GARMIN_OAUTH1: ${{ secrets.GARMIN_OAUTH1_TOKEN }}
+          GARMIN_OAUTH2: ${{ secrets.GARMIN_OAUTH2_TOKEN }}
+        run: |
+          mkdir -p .garmin_tokens
+          echo "$GARMIN_OAUTH1" | base64 -d > .garmin_tokens/oauth1_token.json
+          echo "$GARMIN_OAUTH2" | base64 -d > .garmin_tokens/oauth2_token.json
+          echo "Tokens restored ($(wc -c < .garmin_tokens/oauth1_token.json)b + $(wc -c < .garmin_tokens/oauth2_token.json)b)"
 
       - name: Install dependencies
         run: pip install garminconnect==0.2.38 garth
@@ -35,6 +39,14 @@ jobs:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: python sync_garmin.py
+
+      - name: Upload refreshed tokens as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: garmin-tokens
+          path: .garmin_tokens/
+          retention-days: 1
 
       - name: Commit and push
         run: |

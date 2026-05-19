@@ -41,21 +41,26 @@ def connect():
     email = os.environ.get("GARMIN_EMAIL")
     password = os.environ.get("GARMIN_PASSWORD")
 
-    # Try resume from saved tokens
     token_files = os.listdir(TOKEN_DIR) if os.path.isdir(TOKEN_DIR) else []
     if token_files:
-        try:
-            client = Garmin()
-            if _has_garth(client):
-                client.garth.load(TOKEN_DIR)
-            client.login()
-            _save_tokens(client)
-            print("Resumed Garmin session from cached tokens")
-            return client
-        except Exception as e:
-            print(f"Token resume failed: {e}")
-            print("Waiting 60s before password login (rate limit cooldown)...")
-            time.sleep(60)
+        print(f"Found cached tokens: {token_files}")
+        for attempt in range(3):
+            try:
+                client = Garmin()
+                if _has_garth(client):
+                    client.garth.load(TOKEN_DIR)
+                client.login()
+                _save_tokens(client)
+                print("Resumed Garmin session from cached tokens")
+                return client
+            except Exception as e:
+                print(f"  Token resume attempt {attempt + 1}/3 failed: {e}")
+                if attempt < 2:
+                    wait = 30 * (attempt + 1)
+                    print(f"  Retrying in {wait}s...")
+                    time.sleep(wait)
+        print("All token resume attempts failed, trying password login...")
+        time.sleep(60)
 
     if not email or not password:
         print("ERROR: No cached tokens and GARMIN_EMAIL/GARMIN_PASSWORD not set")
@@ -63,7 +68,7 @@ def connect():
 
     for attempt in range(3):
         try:
-            print(f"Login attempt {attempt + 1}/3 with email/password...")
+            print(f"Password login attempt {attempt + 1}/3...")
             client = Garmin(email, password)
             client.login()
             _save_tokens(client)
