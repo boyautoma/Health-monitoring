@@ -856,14 +856,16 @@ function renderACWR() {
     const now = new Date();
     const msInDay = 86400000;
 
-    // Compute acute (7 days) and chronic (28 days) total distance
+    // Compute acute (7 days) and chronic (28 days) mechanical stress
+    // Weighted by activity type: running >> walking > cycling
     let acute = 0;
     let chronic28 = 0;
     acts.forEach(a => {
         const d = new Date(a.date);
         const daysAgo = (now - d) / msInDay;
-        if (daysAgo <= 7) acute += (a.distance_km || 0);
-        if (daysAgo <= 28) chronic28 += (a.distance_km || 0);
+        const stress = a.mechanical_stress || 0;
+        if (daysAgo <= 7) acute += stress;
+        if (daysAgo <= 28) chronic28 += stress;
     });
 
     const chronicWeekly = chronic28 / 4;
