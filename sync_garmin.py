@@ -152,13 +152,31 @@ def fetch_rhr(client, date_str):
 
 
 def fetch_vo2max(client, date_str):
+    # Try get_max_metrics (list format)
     data = safe_call(client.get_max_metrics, date_str)
-    if data and isinstance(data, list):
-        for metric in data:
-            g = metric.get("generic", {})
+    if data:
+        if isinstance(data, list):
+            for metric in data:
+                g = metric.get("generic", {})
+                v = g.get("vo2MaxPreciseValue") or g.get("vo2MaxValue")
+                if v:
+                    return v
+        elif isinstance(data, dict):
+            for key in ("vo2MaxPreciseValue", "vo2MaxValue"):
+                if data.get(key):
+                    return data[key]
+            g = data.get("generic", {})
             v = g.get("vo2MaxPreciseValue") or g.get("vo2MaxValue")
             if v:
                 return v
+
+    # Fallback: try fitness_age endpoint which sometimes includes VO2max
+    data2 = safe_call(client.get_body_composition, date_str)
+    if data2 and isinstance(data2, dict):
+        for key in ("vo2Max", "vo2MaxValue"):
+            if data2.get(key):
+                return data2[key]
+
     return None
 
 
@@ -318,15 +336,27 @@ def main():
     history_map[date_str] = today_data
 
     # Determine which past dates need backfilling (up to BACKFILL_DAYS)
+    # Also upgrade existing entries missing bedtime/wake_time (max 14 per run)
+    upgrade_count = 0
+    UPGRADE_MAX = 14
     for i in range(1, BACKFILL_DAYS + 1):
         d = today - timedelta(days=i)
         d_str = d.strftime("%Y-%m-%d")
-        if d_str in history_map:
+        existing = history_map.get(d_str)
+        needs_upgrade = (
+            existing
+            and existing.get("bedtime") is None
+            and upgrade_count < UPGRADE_MAX
+        )
+        if existing and not needs_upgrade:
             continue
-        print(f"  Backfilling {d_str}...")
+        action = "Upgrading" if needs_upgrade else "Backfilling"
+        print(f"  {action} {d_str}...")
         try:
             day, *_ = fetch_day(client, d_str)
             history_map[d_str] = day
+            if needs_upgrade:
+                upgrade_count += 1
             time.sleep(1)
         except Exception as e:
             print(f"  Skipped {d_str}: {e}")
@@ -347,18 +377,8 @@ def main():
         key = a.get("activityId") or f"{a.get('date')}_{a.get('name')}"
         act_map[key] = a
 
-    # Determine fetch window: from most recent existing date, or BACKFILL_DAYS
-    if act_map:
-        most_recent = max(
-            (a.get("date", "1970-01-01") for a in act_map.values()),
-            default="1970-01-01",
-        )
-        try:
-            start_dt = datetime.strptime(most_recent, "%Y-%m-%d") - timedelta(days=1)
-        except ValueError:
-            start_dt = today - timedelta(days=BACKFILL_DAYS)
-    else:
-        start_dt = today - timedelta(days=BACKFILL_DAYS)
+    # Always fetch full BACKFILL_DAYS window (upsert by activityId ensures no dupes)
+    start_dt = today - timedelta(days=BACKFILL_DAYS)
 
     # Fetch ALL activity types (no activitytype filter)
     raw = safe_call(
