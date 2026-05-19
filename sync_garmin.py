@@ -11,6 +11,7 @@ import json
 import time
 from datetime import datetime, timedelta
 
+import garth
 from garminconnect import Garmin
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,13 +22,7 @@ TOKEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".garmin_to
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
 
 
-def _has_garth(client):
-    return hasattr(client, 'garth') and client.garth is not None
-
-
 def _save_tokens(client):
-    if not _has_garth(client):
-        return
     try:
         client.garth.dump(TOKEN_DIR)
         print("  Tokens saved")
@@ -44,23 +39,17 @@ def connect():
     token_files = os.listdir(TOKEN_DIR) if os.path.isdir(TOKEN_DIR) else []
     if token_files:
         print(f"Found cached tokens: {token_files}")
-        for attempt in range(3):
-            try:
-                client = Garmin()
-                if _has_garth(client):
-                    client.garth.load(TOKEN_DIR)
-                client.login()
-                _save_tokens(client)
-                print("Resumed Garmin session from cached tokens")
-                return client
-            except Exception as e:
-                print(f"  Token resume attempt {attempt + 1}/3 failed: {e}")
-                if attempt < 2:
-                    wait = 30 * (attempt + 1)
-                    print(f"  Retrying in {wait}s...")
-                    time.sleep(wait)
-        print("All token resume attempts failed, trying password login...")
-        time.sleep(60)
+        try:
+            garth.resume(TOKEN_DIR)
+            client = Garmin()
+            client.garth = garth.client
+            client.display_name = garth.client.profile["displayName"]
+            _save_tokens(client)
+            print(f"Resumed session via garth.resume (user: {garth.client.profile.get('fullName', client.display_name)})")
+            return client
+        except Exception as e:
+            print(f"  garth.resume failed: {e}")
+            print("  Falling back to password login...")
 
     if not email or not password:
         print("ERROR: No cached tokens and GARMIN_EMAIL/GARMIN_PASSWORD not set")
