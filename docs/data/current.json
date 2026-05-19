@@ -1,8 +1,9 @@
 {
-  "last_sync": "2026-05-19T20:45:07.022465",
+  "last_sync": "2026-05-19T21:18:42.267384",
   "date": "2026-05-19",
   "profile": {
     "vo2max": null,
+    "vma": null,
     "vdot": null,
     "fc_max": 198,
     "fc_repos": 53,
