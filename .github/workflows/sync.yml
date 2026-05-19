@@ -28,7 +28,7 @@ jobs:
           key: garmin-tokens
 
       - name: Install dependencies
-        run: pip install garminconnect
+        run: pip install garminconnect==0.2.38
 
       - name: Sync Garmin data
         env:

@@ -21,31 +21,60 @@ TOKEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".garmin_to
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
 
 
+def _save_tokens(client):
+    try:
+        client.garth.dump(TOKEN_DIR)
+    except Exception:
+        pass
+
+
+def _load_tokens(client):
+    try:
+        client.garth.load(TOKEN_DIR)
+        return True
+    except Exception:
+        return False
+
+
 def connect():
     os.makedirs(TOKEN_DIR, exist_ok=True)
+
+    email = os.environ.get("GARMIN_EMAIL")
+    password = os.environ.get("GARMIN_PASSWORD")
 
     # Try resume from saved tokens
     try:
         client = Garmin()
-        client.garth.load(TOKEN_DIR)
-        client.login()
-        client.garth.dump(TOKEN_DIR)
-        print("Resumed Garmin session from cached tokens")
-        return client
-    except Exception:
-        pass
+        if _load_tokens(client):
+            client.login()
+            _save_tokens(client)
+            print("Resumed Garmin session from cached tokens")
+            return client
+    except Exception as e:
+        print(f"Token resume failed: {e}")
+        print("Waiting 30s before email/password login...")
+        time.sleep(30)
 
-    email = os.environ.get("GARMIN_EMAIL")
-    password = os.environ.get("GARMIN_PASSWORD")
     if not email or not password:
         print("ERROR: No cached tokens and GARMIN_EMAIL/GARMIN_PASSWORD not set")
         sys.exit(1)
 
-    client = Garmin(email, password)
-    client.login()
-    client.garth.dump(TOKEN_DIR)
-    print("Logged in with email/password, tokens saved")
-    return client
+    for attempt in range(3):
+        try:
+            client = Garmin(email, password)
+            client.login()
+            _save_tokens(client)
+            print("Logged in with email/password, tokens saved")
+            return client
+        except Exception as e:
+            wait = 30 * (attempt + 1)
+            print(f"Login attempt {attempt + 1} failed: {e}")
+            if attempt < 2:
+                print(f"Retrying in {wait}s...")
+                time.sleep(wait)
+
+    print("ERROR: All login attempts failed")
+    sys.exit(1)
 
 
 def safe_call(func, *args, **kwargs):
