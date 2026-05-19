@@ -890,6 +890,57 @@ function fmtDateFull(dateStr) {
     }
 }
 
+// ── Manual Sync ────────────────────────────
+
+(function() {
+    const btn = document.getElementById('syncBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        let token = sessionStorage.getItem('gh_pat');
+        if (!token) {
+            token = prompt('GitHub Personal Access Token\n(fine-grained, permission Actions: Read & Write)');
+            if (!token) return;
+            sessionStorage.setItem('gh_pat', token.trim());
+            token = token.trim();
+        }
+
+        btn.className = 'sync-btn syncing';
+
+        try {
+            const res = await fetch(
+                'https://api.github.com/repos/boyautoma/Health-monitoring/actions/workflows/sync.yml/dispatches',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github+json',
+                    },
+                    body: JSON.stringify({ ref: 'main' }),
+                }
+            );
+
+            if (res.status === 204) {
+                btn.className = 'sync-btn success';
+                setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
+            } else if (res.status === 401 || res.status === 403) {
+                sessionStorage.removeItem('gh_pat');
+                btn.className = 'sync-btn error';
+                setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
+                alert('Token invalide ou permissions insuffisantes.\nCréez un fine-grained PAT avec Actions: Read & Write.');
+            } else {
+                btn.className = 'sync-btn error';
+                setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
+                alert(`Erreur ${res.status}: ${res.statusText}`);
+            }
+        } catch (e) {
+            btn.className = 'sync-btn error';
+            setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
+            alert('Erreur réseau: ' + e.message);
+        }
+    });
+})();
+
 // ── Init ────────────────────────────────────
 
 loadData();
