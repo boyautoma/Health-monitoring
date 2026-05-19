@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-05-19T21:18:42.267384",
+  "last_sync": "2026-05-19T23:45:51.437457",
   "date": "2026-05-19",
   "profile": {
     "vo2max": null,
@@ -15,7 +15,6 @@
     "level": "excellent",
     "hrv_last_night": null,
     "hrv_7day_avg": 72,
-    "hrv_status": "BALANCED",
     "rhr": 53,
     "sleep_score": 77,
     "sleep_duration_min": 411,
