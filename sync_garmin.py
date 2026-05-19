@@ -272,13 +272,13 @@ def _normalize_activity_type(raw_type_key: str) -> str:
 
 _STRESS_COEFFICIENTS = {
     # (distance_coeff, elevation_coeff)
-    "running": (8.0, 0.05),
-    "walking": (3.0, 0.08),
-    "cycling": (1.0, 0.02),
+    "running": (8.0, 0.15),
+    "walking": (3.0, 0.20),
+    "cycling": (1.0, 0.10),
 }
 
 # Default for unknown activity types (moderate impact)
-_STRESS_DEFAULT = (4.0, 0.04)
+_STRESS_DEFAULT = (4.0, 0.10)
 
 
 def calc_mechanical_stress(activity_type: str, distance_km: float, elevation_gain: float) -> float:
