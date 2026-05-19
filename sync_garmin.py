@@ -93,6 +93,14 @@ def safe_call(func, *args, **kwargs):
         return None
 
 
+def _ts_to_hhmm(ts_ms):
+    """Convert Garmin local timestamp (ms) to HH:MM string."""
+    if not ts_ms:
+        return None
+    dt = datetime.fromtimestamp(ts_ms / 1000)
+    return dt.strftime("%H:%M")
+
+
 def fetch_sleep(client, date_str):
     data = safe_call(client.get_sleep_data, date_str)
     if not data:
@@ -105,6 +113,8 @@ def fetch_sleep(client, date_str):
         "light_sleep_min": (daily.get("lightSleepSeconds") or 0) // 60,
         "rem_sleep_min": (daily.get("remSleepSeconds") or 0) // 60,
         "awake_min": (daily.get("awakeSleepSeconds") or 0) // 60,
+        "bedtime": _ts_to_hhmm(daily.get("sleepStartTimestampLocal")),
+        "wake_time": _ts_to_hhmm(daily.get("sleepEndTimestampLocal")),
     }
 
 
@@ -189,6 +199,8 @@ def fetch_day(client, date_str):
         "light_sleep_min": sleep.get("light_sleep_min") if sleep else None,
         "rem_sleep_min": sleep.get("rem_sleep_min") if sleep else None,
         "awake_min": sleep.get("awake_min") if sleep else None,
+        "bedtime": sleep.get("bedtime") if sleep else None,
+        "wake_time": sleep.get("wake_time") if sleep else None,
         "stress_avg": stress.get("avg_stress") if stress else None,
         "training_readiness": tr,
         "vo2max": vo2max,

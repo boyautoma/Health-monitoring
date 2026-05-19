@@ -576,6 +576,66 @@ main {
 .sleep-night-bar .sn-rem   { background: var(--purple); }
 .sleep-night-bar .sn-awake { background: var(--orange); }
 
+/* ── Sleep Insights ──────────────────── */
+
+.sleep-insights {
+    margin-bottom: 16px;
+}
+.insights-title {
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    margin-bottom: 10px;
+}
+.insights-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 12px;
+}
+.insight-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    display: flex; flex-direction: column; gap: 4px;
+}
+.insight-card.full { grid-column: 1 / -1; }
+.insight-icon {
+    font-size: 16px; line-height: 1; margin-bottom: 2px;
+}
+.insight-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--text-3); text-transform: uppercase;
+}
+.insight-value {
+    font-size: 24px; font-weight: 900; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.insight-sub {
+    font-size: 11px; color: var(--text-3); font-weight: 500;
+}
+.insight-confidence {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+    margin-top: 2px; width: fit-content;
+}
+.insight-confidence.high   { background: rgba(0,241,159,0.12); color: var(--green); }
+.insight-confidence.medium { background: rgba(255,215,0,0.12); color: var(--gold); }
+.insight-confidence.low    { background: rgba(255,140,66,0.12); color: var(--orange); }
+
+.insight-reco {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+.insight-reco-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-2); line-height: 1.5;
+}
+.insight-reco-item:last-child { border-bottom: none; }
+.reco-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
 /* ── Performance Overhaul ────────────── */
 
 .perf-vo2-trend {

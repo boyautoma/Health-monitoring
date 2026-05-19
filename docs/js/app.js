@@ -437,7 +437,6 @@ function renderTrends(days) {
 function renderSleepTab(days) {
     if (days == null) days = 7;
 
-    // Update chart title
     const titleEl = document.getElementById('sleepChartTitle');
     if (titleEl) {
         titleEl.textContent = days === 0
@@ -445,7 +444,6 @@ function renderSleepTab(days) {
             : `Score sommeil — ${days} jours`;
     }
 
-    // Destroy existing sleep chart
     destroyChart('sleepChart');
 
     const h = filterHistory(days);
@@ -454,10 +452,212 @@ function renderSleepTab(days) {
     const dates = h.map(d => fmtDate(d.date));
     createLine('sleepChart', dates, h.map(d => d.sleep_score), '/100', COLORS.purple, 'sleepChart');
 
-    // Render sleep history list
+    renderSleepInsights();
     renderSleepHistory(h);
 
     chartsRendered.sleep = true;
+}
+
+// ── Sleep Insights Engine ──────────────
+
+function renderSleepInsights() {
+    const container = document.getElementById('sleepInsights');
+    if (!container) return;
+
+    const allHistory = (DATA.history || []).filter(d => d.sleep_score != null);
+    if (allHistory.length < 3) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const n = allHistory.length;
+    const confidence = n >= 30 ? 'high' : n >= 14 ? 'medium' : 'low';
+    const confLabel = confidence === 'high' ? 'Fiable' : confidence === 'medium' ? 'Modéré' : 'Faible';
+    const confPct = Math.min(99, Math.round(50 + (n / 90) * 49));
+
+    // Best bedtime
+    const bestBedtime = findOptimalTime(allHistory, 'bedtime');
+    // Best wake time
+    const bestWake = findOptimalTime(allHistory, 'wake_time');
+    // Optimal duration
+    const bestDuration = findOptimalDuration(allHistory);
+    // Deep sleep ratio analysis
+    const deepAnalysis = analyzeDeepSleep(allHistory);
+    // Recommendations
+    const recos = generateRecos(allHistory, bestBedtime, bestWake, bestDuration, deepAnalysis);
+
+    container.innerHTML = `
+        <div class="insights-title">Analyse du sommeil</div>
+        <div class="insights-grid">
+            <div class="insight-card">
+                <span class="insight-icon">🌙</span>
+                <span class="insight-label">Coucher optimal</span>
+                <span class="insight-value">${bestBedtime.time || '--'}</span>
+                <span class="insight-sub">Score moy. ${bestBedtime.avgScore || '--'}/100</span>
+                <span class="insight-confidence ${confidence}">${confPct}% · ${confLabel} (${n} nuits)</span>
+            </div>
+            <div class="insight-card">
+                <span class="insight-icon">☀️</span>
+                <span class="insight-label">Lever optimal</span>
+                <span class="insight-value">${bestWake.time || '--'}</span>
+                <span class="insight-sub">Score moy. ${bestWake.avgScore || '--'}/100</span>
+                <span class="insight-confidence ${confidence}">${confPct}% · ${confLabel}</span>
+            </div>
+            <div class="insight-card">
+                <span class="insight-icon">⏱️</span>
+                <span class="insight-label">Durée optimale</span>
+                <span class="insight-value">${bestDuration.label || '--'}</span>
+                <span class="insight-sub">Score moy. ${bestDuration.avgScore || '--'}/100</span>
+                <span class="insight-confidence ${confidence}">${confPct}% · ${confLabel}</span>
+            </div>
+            <div class="insight-card">
+                <span class="insight-icon">💤</span>
+                <span class="insight-label">Sommeil profond</span>
+                <span class="insight-value">${deepAnalysis.avgPct}%</span>
+                <span class="insight-sub">${deepAnalysis.avgMin} min/nuit · idéal 15-25%</span>
+                <span class="insight-confidence ${deepAnalysis.status}">${deepAnalysis.statusText}</span>
+            </div>
+        </div>
+        <div class="insight-reco">
+            ${recos.map(r => `
+                <div class="insight-reco-item">
+                    <span class="reco-icon">${r.icon}</span>
+                    <span>${r.text}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function findOptimalTime(history, field) {
+    const buckets = {};
+    history.forEach(d => {
+        const t = d[field];
+        if (!t) return;
+        const hour = t.split(':')[0];
+        if (!buckets[hour]) buckets[hour] = { scores: [], times: [] };
+        buckets[hour].scores.push(d.sleep_score);
+        buckets[hour].times.push(t);
+    });
+
+    if (Object.keys(buckets).length === 0) return { time: null, avgScore: null };
+
+    let bestHour = null, bestAvg = 0;
+    for (const [hour, b] of Object.entries(buckets)) {
+        if (b.scores.length < 2) continue;
+        const avg = b.scores.reduce((s, v) => s + v, 0) / b.scores.length;
+        if (avg > bestAvg) { bestAvg = avg; bestHour = hour; }
+    }
+
+    if (!bestHour) {
+        // Fallback: use the most frequent hour
+        const sorted = Object.entries(buckets).sort((a, b) => b[1].scores.length - a[1].scores.length);
+        bestHour = sorted[0][0];
+        bestAvg = sorted[0][1].scores.reduce((s, v) => s + v, 0) / sorted[0][1].scores.length;
+    }
+
+    // Avg minute within that hour
+    const times = buckets[bestHour].times;
+    const avgMin = Math.round(times.reduce((s, t) => s + parseInt(t.split(':')[1], 10), 0) / times.length);
+    return {
+        time: `${bestHour}:${String(avgMin).padStart(2, '0')}`,
+        avgScore: Math.round(bestAvg),
+    };
+}
+
+function findOptimalDuration(history) {
+    // Bucket into 30-min ranges
+    const buckets = {};
+    history.forEach(d => {
+        if (!d.sleep_duration_min) return;
+        const bucket = Math.floor(d.sleep_duration_min / 30) * 30;
+        if (!buckets[bucket]) buckets[bucket] = [];
+        buckets[bucket].push(d.sleep_score);
+    });
+
+    let bestBucket = null, bestAvg = 0;
+    for (const [bucket, scores] of Object.entries(buckets)) {
+        if (scores.length < 2) continue;
+        const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
+        if (avg > bestAvg) { bestAvg = avg; bestBucket = parseInt(bucket, 10); }
+    }
+
+    if (bestBucket == null) return { label: null, avgScore: null };
+
+    const lo = bestBucket, hi = bestBucket + 30;
+    return {
+        label: `${fmtMin(lo)}-${fmtMin(hi)}`,
+        avgScore: Math.round(bestAvg),
+    };
+}
+
+function analyzeDeepSleep(history) {
+    const valid = history.filter(d => d.deep_sleep_min != null && d.sleep_duration_min > 0);
+    if (!valid.length) return { avgPct: '--', avgMin: '--', status: 'medium', statusText: 'Données insuffisantes' };
+
+    const pcts = valid.map(d => (d.deep_sleep_min / d.sleep_duration_min) * 100);
+    const avgPct = Math.round(pcts.reduce((s, v) => s + v, 0) / pcts.length);
+    const avgMin = Math.round(valid.reduce((s, d) => s + d.deep_sleep_min, 0) / valid.length);
+
+    let status, statusText;
+    if (avgPct >= 15 && avgPct <= 25) { status = 'high'; statusText = 'Optimal'; }
+    else if (avgPct >= 10 && avgPct < 15) { status = 'medium'; statusText = 'Légèrement bas'; }
+    else if (avgPct > 25) { status = 'high'; statusText = 'Très bon'; }
+    else { status = 'low'; statusText = 'Insuffisant'; }
+
+    return { avgPct, avgMin, status, statusText };
+}
+
+function generateRecos(history, bedtime, wake, duration, deep) {
+    const recos = [];
+    const recent7 = history.slice(0, 7);
+    const avgScore7 = recent7.length ? Math.round(recent7.reduce((s, d) => s + d.sleep_score, 0) / recent7.length) : null;
+
+    // Bedtime consistency
+    const bedtimes = history.filter(d => d.bedtime).map(d => {
+        const [h, m] = d.bedtime.split(':').map(Number);
+        return h * 60 + m;
+    });
+    if (bedtimes.length >= 7) {
+        const avg = bedtimes.reduce((s, v) => s + v, 0) / bedtimes.length;
+        const variance = Math.sqrt(bedtimes.reduce((s, v) => s + (v - avg) ** 2, 0) / bedtimes.length);
+        if (variance > 60) {
+            recos.push({ icon: '⏰', text: `Ton heure de coucher varie beaucoup (±${Math.round(variance)} min). Essaie de te coucher à la même heure chaque soir pour améliorer la qualité.` });
+        } else {
+            recos.push({ icon: '✅', text: `Bonne régularité de coucher (±${Math.round(variance)} min). Continue comme ça.` });
+        }
+    }
+
+    // Score trend
+    if (avgScore7 != null) {
+        const older = history.slice(7, 14);
+        const avgOlder = older.length ? Math.round(older.reduce((s, d) => s + d.sleep_score, 0) / older.length) : null;
+        if (avgOlder != null) {
+            const diff = avgScore7 - avgOlder;
+            if (diff < -5) {
+                recos.push({ icon: '📉', text: `Score en baisse (${avgScore7} vs ${avgOlder} la semaine précédente). Vérifie ton stress et ton heure de coucher.` });
+            } else if (diff > 5) {
+                recos.push({ icon: '📈', text: `Score en hausse (${avgScore7} vs ${avgOlder}). Ta routine actuelle fonctionne bien.` });
+            }
+        }
+    }
+
+    // Deep sleep
+    if (deep.avgPct !== '--' && deep.avgPct < 15) {
+        recos.push({ icon: '🧊', text: `Sommeil profond bas (${deep.avgPct}%). Essaie de réduire l'alcool et les écrans avant le coucher, et garde une chambre fraîche (18-19°C).` });
+    }
+
+    // Duration
+    if (bedtime.time && duration.label) {
+        recos.push({ icon: '🎯', text: `Pour un score optimal, couche-toi vers ${bedtime.time} et vise ${duration.label} de sommeil.` });
+    }
+
+    // Fallback if no recos
+    if (!recos.length) {
+        recos.push({ icon: '💡', text: 'Continue à collecter des données pour des recommandations plus précises.' });
+    }
+
+    return recos;
 }
 
 function renderSleepHistory(historyData) {
@@ -592,24 +792,60 @@ function renderWeeklyRecap() {
         `;
         container.appendChild(totalRow);
     } else {
-        // Old format: just numbers per week
-        const curr = typeof currentWeek === 'number' ? currentWeek : 0;
-        const prev = prevWeek != null && typeof prevWeek === 'number' ? prevWeek : 0;
-        const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
-        let changeClass = 'flat';
-        let changeText = '—';
-        if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
-        else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
+        // Old format: compute per-type breakdown from activities
+        const acts = DATA.activities || [];
+        const now = new Date();
+        const msInDay = 86400000;
+        const currByType = { running: 0, walking: 0, cycling: 0 };
+        const prevByType = { running: 0, walking: 0, cycling: 0 };
+        let totalCurr = 0, totalPrev = 0;
 
-        const row = document.createElement('div');
-        row.className = 'weekly-row';
-        row.innerHTML = `
-            <span class="weekly-icon">🏃</span>
+        acts.forEach(a => {
+            const d = new Date(a.date);
+            const daysAgo = (now - d) / msInDay;
+            const t = (a.type || 'running').toLowerCase();
+            const dist = a.distance_km || 0;
+            if (daysAgo <= 7) {
+                if (t in currByType) currByType[t] += dist;
+                totalCurr += dist;
+            } else if (daysAgo <= 14) {
+                if (t in prevByType) prevByType[t] += dist;
+                totalPrev += dist;
+            }
+        });
+
+        types.forEach(t => {
+            const curr = currByType[t.key] || 0;
+            const prev = prevByType[t.key] || 0;
+            const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
+            let changeClass = 'flat', changeText = '—';
+            if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
+            else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
+            const row = document.createElement('div');
+            row.className = 'weekly-row';
+            row.innerHTML = `
+                <span class="weekly-icon">${t.icon}</span>
+                <span class="weekly-type">${t.label}</span>
+                <span class="weekly-vol">${curr.toFixed(1)} km</span>
+                <span class="weekly-change ${changeClass}">${changeText}</span>
+            `;
+            container.appendChild(row);
+        });
+
+        const totalChange = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : (totalCurr > 0 ? 100 : 0);
+        let totalClass = 'flat', totalText = '—';
+        if (totalChange > 0) { totalClass = 'up'; totalText = `+${Math.round(totalChange)}%`; }
+        else if (totalChange < 0) { totalClass = 'down'; totalText = `${Math.round(totalChange)}%`; }
+        const totalRow = document.createElement('div');
+        totalRow.className = 'weekly-row';
+        totalRow.style.fontWeight = '700';
+        totalRow.innerHTML = `
+            <span class="weekly-icon">📊</span>
             <span class="weekly-type">Total</span>
-            <span class="weekly-vol">${curr.toFixed(1)} km</span>
-            <span class="weekly-change ${changeClass}">${changeText}</span>
+            <span class="weekly-vol">${totalCurr.toFixed(1)} km</span>
+            <span class="weekly-change ${totalClass}">${totalText}</span>
         `;
-        container.appendChild(row);
+        container.appendChild(totalRow);
     }
 }
 
