@@ -1133,11 +1133,19 @@ function fmtDateFull(dateStr) {
     if (!btn) return;
 
     btn.addEventListener('click', async () => {
-        let token = sessionStorage.getItem('gh_pat');
+        let token = localStorage.getItem('gh_pat');
         if (!token) {
-            token = prompt('GitHub Personal Access Token\n(fine-grained, permission Actions: Read & Write)');
+            token = prompt(
+                'GitHub Personal Access Token (une seule fois)\n\n' +
+                'Pour le créer :\n' +
+                '1. github.com → Settings → Developer settings\n' +
+                '2. Fine-grained tokens → Generate new token\n' +
+                '3. Repository: Health-monitoring uniquement\n' +
+                '4. Permission Actions: Read and Write\n' +
+                '5. Coller le token ici'
+            );
             if (!token) return;
-            sessionStorage.setItem('gh_pat', token.trim());
+            localStorage.setItem('gh_pat', token.trim());
             token = token.trim();
         }
 
@@ -1160,10 +1168,10 @@ function fmtDateFull(dateStr) {
                 btn.className = 'sync-btn success';
                 setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
             } else if (res.status === 401 || res.status === 403) {
-                sessionStorage.removeItem('gh_pat');
+                localStorage.removeItem('gh_pat');
                 btn.className = 'sync-btn error';
                 setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
-                alert('Token invalide ou permissions insuffisantes.\nCréez un fine-grained PAT avec Actions: Read & Write.');
+                alert('Token invalide ou expiré. Clique à nouveau pour en saisir un nouveau.');
             } else {
                 btn.className = 'sync-btn error';
                 setTimeout(() => { btn.className = 'sync-btn'; }, 3000);
