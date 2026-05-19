@@ -185,10 +185,22 @@
                 </div>
             </div>
 
+            <!-- Sleep date range pills -->
+            <div class="range-pills" id="sleepRangePills">
+                <button class="pill active" data-days="7">7j</button>
+                <button class="pill" data-days="30">30j</button>
+                <button class="pill" data-days="90">90j</button>
+            </div>
+
             <!-- Sleep trend chart -->
             <div class="chart-card">
-                <div class="chart-title">Score sommeil — 30 jours</div>
+                <div class="chart-title" id="sleepChartTitle">Score sommeil — 7 jours</div>
                 <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
+            </div>
+
+            <!-- Sleep history detail -->
+            <div class="sleep-history" id="sleepHistory">
+                <div class="sleep-history-title">Historique par nuit</div>
             </div>
         </section>
 
@@ -198,9 +210,10 @@
                 <h2>Performance</h2>
             </div>
 
+            <!-- VO2max & VMA cards -->
             <div class="perf-cards">
                 <div class="perf-big">
-                    <span class="perf-big-val" id="perfVo2">--</span>
+                    <span class="perf-big-val"><span id="perfVo2">--</span><span class="perf-vo2-trend" id="perfVo2Trend"></span></span>
                     <span class="perf-big-label">VO2max</span>
                 </div>
                 <div class="perf-big">
@@ -209,13 +222,48 @@
                 </div>
             </div>
 
-            <!-- Weekly volume chart -->
+            <!-- Weekly recap by activity type -->
+            <div class="perf-section-title">Bilan hebdomadaire</div>
+            <div class="weekly-recap" id="weeklyRecap"></div>
+
+            <!-- ACWR gauge -->
+            <div class="acwr-card" id="acwrCard">
+                <div class="acwr-header">
+                    <span class="acwr-label">Ratio charge (ACWR)</span>
+                    <span class="acwr-value" id="acwrValue">--</span>
+                </div>
+                <div class="acwr-bar-wrap">
+                    <div class="acwr-bar-bg">
+                        <div class="acwr-zone danger-low"></div>
+                        <div class="acwr-zone warn-low"></div>
+                        <div class="acwr-zone safe"></div>
+                        <div class="acwr-zone warn-high"></div>
+                        <div class="acwr-zone danger-high"></div>
+                    </div>
+                    <div class="acwr-marker" id="acwrMarker"></div>
+                </div>
+                <div class="acwr-labels">
+                    <span>0</span><span>0.6</span><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0</span>
+                </div>
+                <div class="acwr-status" id="acwrStatus">--</div>
+            </div>
+
+            <!-- Mechanical stress -->
+            <div class="mech-stress-card" id="mechStressCard">
+                <div class="mech-stress-left">
+                    <span class="mech-stress-label">Stress m&eacute;canique (semaine)</span>
+                    <span class="mech-stress-val" id="mechStressVal">--</span>
+                </div>
+                <span class="mech-stress-trend" id="mechStressTrend"></span>
+            </div>
+
+            <!-- Volume chart (stacked) -->
             <div class="chart-card">
-                <div class="chart-title">Volume hebdomadaire</div>
+                <div class="chart-title">Volume hebdomadaire par type</div>
                 <div class="chart-wrap"><canvas id="volumeChart"></canvas></div>
             </div>
 
-            <!-- Recent activities -->
+            <!-- Activities list (all types) -->
             <div class="activities-list" id="activitiesList">
                 <div class="chart-title">Activit&eacute;s r&eacute;centes</div>
             </div>
@@ -225,7 +273,15 @@
         <section class="page" id="pageTrends">
             <div class="section-header">
                 <h2>Tendances</h2>
-                <span class="section-sub">30 derniers jours</span>
+                <span class="section-sub" id="trendsRangeLabel">7 derniers jours</span>
+            </div>
+
+            <!-- Date range pills -->
+            <div class="range-pills" id="trendsRangePills">
+                <button class="pill active" data-days="7">7j</button>
+                <button class="pill" data-days="30">30j</button>
+                <button class="pill" data-days="90">90j</button>
+                <button class="pill" data-days="0">Tout</button>
             </div>
 
             <div class="chart-card">

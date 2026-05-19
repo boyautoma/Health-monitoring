@@ -3,6 +3,14 @@
 
 Runs via GitHub Actions (cron 10h + 21h Paris time) or manually.
 Exports: current.json, history.json, activities.json, weekly_volumes.json
+
+Features:
+- Persistent cumulative history (no 90-day cap, merges with existing data)
+- Fetches ALL activity types (running, cycling, walking, etc.)
+- Persistent activities store (upserts by activityId)
+- Weekly volumes broken down by activity type
+- Mechanical stress score per activity and per week
+- VO2max history per day + VMA calculation
 """
 
 import os
@@ -20,6 +28,9 @@ from recovery_advisor import calculate_recovery_score
 
 TOKEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".garmin_tokens")
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "data")
+
+# Backfill window for first run (days)
+BACKFILL_DAYS = 90
 
 
 def _save_tokens(client):
@@ -149,11 +160,13 @@ def fetch_training_readiness(client, date_str):
 
 
 def fetch_day(client, date_str):
+    """Fetch all wellness metrics for a single day, including VO2max."""
     sleep = fetch_sleep(client, date_str)
     hrv = fetch_hrv(client, date_str)
     stress = fetch_stress(client, date_str)
     rhr = fetch_rhr(client, date_str)
     tr = fetch_training_readiness(client, date_str)
+    vo2max = fetch_vo2max(client, date_str)
 
     score = calculate_recovery_score(
         hrv_7day_avg=hrv.get("weekly_avg") if hrv else None,
@@ -178,6 +191,7 @@ def fetch_day(client, date_str):
         "awake_min": sleep.get("awake_min") if sleep else None,
         "stress_avg": stress.get("avg_stress") if stress else None,
         "training_readiness": tr,
+        "vo2max": vo2max,
     }, sleep, hrv, stress, rhr
 
 
@@ -193,6 +207,81 @@ def recovery_level(score):
     return "critical"
 
 
+# ---------------------------------------------------------------------------
+# Activity type normalization
+# ---------------------------------------------------------------------------
+
+_TYPE_MAP = {
+    "running": "running",
+    "trail_running": "running",
+    "treadmill_running": "running",
+    "track_running": "running",
+    "walking": "walking",
+    "hiking": "walking",
+    "cycling": "cycling",
+    "road_biking": "cycling",
+    "mountain_biking": "cycling",
+    "indoor_cycling": "cycling",
+    "virtual_ride": "cycling",
+    "swimming": "swimming",
+    "lap_swimming": "swimming",
+    "open_water_swimming": "swimming",
+    "strength_training": "strength",
+    "fitness_equipment": "strength",
+}
+
+
+def _normalize_activity_type(raw_type_key: str) -> str:
+    """Map Garmin typeKey to a simplified category."""
+    return _TYPE_MAP.get(raw_type_key, raw_type_key)
+
+
+# ---------------------------------------------------------------------------
+# Mechanical stress
+# ---------------------------------------------------------------------------
+
+_STRESS_COEFFICIENTS = {
+    # (distance_coeff, elevation_coeff)
+    "running": (8.0, 0.05),
+    "walking": (3.0, 0.08),
+    "cycling": (1.0, 0.02),
+}
+
+# Default for unknown activity types (moderate impact)
+_STRESS_DEFAULT = (4.0, 0.04)
+
+
+def calc_mechanical_stress(activity_type: str, distance_km: float, elevation_gain: float) -> float:
+    """Return a mechanical stress score 0-100 for a single activity."""
+    dc, ec = _STRESS_COEFFICIENTS.get(activity_type, _STRESS_DEFAULT)
+    raw = distance_km * dc + (elevation_gain or 0) * ec
+    return min(round(raw, 1), 100.0)
+
+
+# ---------------------------------------------------------------------------
+# Persistent JSON helpers
+# ---------------------------------------------------------------------------
+
+def _load_json(path):
+    """Load a JSON file, return [] or {} depending on content, default []."""
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"  Warning: could not load {path}: {e}")
+    return []
+
+
+def _save_json(path, obj):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
 def main():
     client = connect()
     today = datetime.now()
@@ -200,89 +289,168 @@ def main():
 
     print(f"Syncing data for {date_str}...")
 
+    # ----- Today's wellness data -----
     today_data, sleep, hrv, stress, rhr = fetch_day(client, date_str)
-    vo2max = fetch_vo2max(client, date_str)
+    vo2max_today = today_data.get("vo2max")
 
-    # --- History ---
+    # =====================================================================
+    # 1. HISTORY: persistent cumulative, merge by date, no cap
+    # =====================================================================
     history_path = os.path.join(DATA_DIR, "history.json")
-    history = []
-    if os.path.exists(history_path):
-        with open(history_path, encoding="utf-8") as f:
-            history = json.load(f)
+    history = _load_json(history_path)
 
-    history = [h for h in history if h.get("date") != date_str]
-    history.insert(0, today_data)
+    # Build lookup by date for existing entries
+    history_map = {h["date"]: h for h in history if "date" in h}
 
-    existing_dates = {h["date"] for h in history}
-    for i in range(1, 31):
+    # Upsert today
+    history_map[date_str] = today_data
+
+    # Determine which past dates need backfilling (up to BACKFILL_DAYS)
+    for i in range(1, BACKFILL_DAYS + 1):
         d = today - timedelta(days=i)
         d_str = d.strftime("%Y-%m-%d")
-        if d_str in existing_dates:
+        if d_str in history_map:
             continue
         print(f"  Backfilling {d_str}...")
         try:
             day, *_ = fetch_day(client, d_str)
-            history.append(day)
+            history_map[d_str] = day
             time.sleep(1)
         except Exception as e:
             print(f"  Skipped {d_str}: {e}")
 
-    history.sort(key=lambda x: x.get("date", ""), reverse=True)
-    history = history[:90]
+    # Rebuild sorted list (newest first) -- NO cap
+    history = sorted(history_map.values(), key=lambda x: x.get("date", ""), reverse=True)
 
-    # --- Activities (90 days running) ---
+    # =====================================================================
+    # 2 + 3. ACTIVITIES: fetch ALL types, persistent store, upsert by activityId
+    # =====================================================================
     print("Fetching activities...")
-    start = today - timedelta(days=90)
+    activities_path = os.path.join(DATA_DIR, "activities.json")
+    existing_activities = _load_json(activities_path)
+
+    # Build lookup by activityId (fallback: date+name)
+    act_map = {}
+    for a in existing_activities:
+        key = a.get("activityId") or f"{a.get('date')}_{a.get('name')}"
+        act_map[key] = a
+
+    # Determine fetch window: from most recent existing date, or BACKFILL_DAYS
+    if act_map:
+        most_recent = max(
+            (a.get("date", "1970-01-01") for a in act_map.values()),
+            default="1970-01-01",
+        )
+        try:
+            start_dt = datetime.strptime(most_recent, "%Y-%m-%d") - timedelta(days=1)
+        except ValueError:
+            start_dt = today - timedelta(days=BACKFILL_DAYS)
+    else:
+        start_dt = today - timedelta(days=BACKFILL_DAYS)
+
+    # Fetch ALL activity types (no activitytype filter)
     raw = safe_call(
         client.get_activities_by_date,
-        start.strftime("%Y-%m-%d"),
+        start_dt.strftime("%Y-%m-%d"),
         today.strftime("%Y-%m-%d"),
-        "running",
     ) or []
 
-    activities = []
     for act in raw:
+        act_id = act.get("activityId")
+        raw_type = act.get("activityType", {}).get("typeKey", "other")
+        norm_type = _normalize_activity_type(raw_type)
+
         dist = (act.get("distance") or 0) / 1000
         dur = (act.get("duration") or 0) / 60
         spd = act.get("averageSpeed")
+        elev_gain = act.get("elevationGain") or 0
+        elev_loss = act.get("elevationLoss") or 0
+
+        # Pace (for running/walking)
         pace_fmt = None
-        if spd and spd > 0:
+        if spd and spd > 0 and norm_type in ("running", "walking"):
             pace_s = 1000 / spd
             m, s = divmod(int(pace_s), 60)
             pace_fmt = f"{m}:{s:02d}"
 
-        activities.append({
+        # Average speed in km/h
+        avg_speed_kmh = round(spd * 3.6, 1) if spd else None
+
+        # Mechanical stress
+        mech_stress = calc_mechanical_stress(norm_type, dist, elev_gain)
+
+        entry = {
+            "activityId": act_id,
             "date": act.get("startTimeLocal", "")[:10],
-            "name": act.get("activityName", "Course"),
-            "type": act.get("activityType", {}).get("typeKey", "running"),
+            "name": act.get("activityName", "Activity"),
+            "type": norm_type,
+            "type_raw": raw_type,
             "distance_km": round(dist, 1),
             "duration_min": round(dur),
             "avg_pace": pace_fmt,
+            "avg_speed_kmh": avg_speed_kmh,
             "avg_hr": act.get("averageHR"),
             "max_hr": act.get("maxHR"),
             "calories": act.get("calories"),
-        })
+            "elevation_gain": round(elev_gain, 1) if elev_gain else 0,
+            "elevation_loss": round(elev_loss, 1) if elev_loss else 0,
+            "training_effect_aerobic": act.get("aerobicTrainingEffect"),
+            "training_effect_anaerobic": act.get("anaerobicTrainingEffect"),
+            "avg_power": act.get("avgPower"),
+            "mechanical_stress": mech_stress,
+        }
 
-    # --- Weekly volumes ---
+        key = act_id or f"{entry['date']}_{entry['name']}"
+        act_map[key] = entry
+
+    # Rebuild sorted list (newest first) -- NO cap
+    activities = sorted(act_map.values(), key=lambda x: x.get("date", ""), reverse=True)
+
+    # =====================================================================
+    # 4. WEEKLY VOLUMES: per activity type + total + weekly mechanical stress
+    # =====================================================================
     weekly_volumes = {}
     for act in activities:
         try:
             ad = datetime.strptime(act["date"], "%Y-%m-%d")
-        except ValueError:
+        except (ValueError, KeyError):
             continue
-        key = (ad - timedelta(days=ad.weekday())).strftime("%Y-%m-%d")
-        weekly_volumes[key] = weekly_volumes.get(key, 0) + act["distance_km"]
-    weekly_volumes = {k: round(v, 1) for k, v in sorted(weekly_volumes.items())}
+        week_key = (ad - timedelta(days=ad.weekday())).strftime("%Y-%m-%d")
+        if week_key not in weekly_volumes:
+            weekly_volumes[week_key] = {"total": 0.0, "weekly_mechanical_stress": 0.0}
 
-    # --- Write JSON ---
+        wv = weekly_volumes[week_key]
+        act_type = act.get("type", "other")
+        wv[act_type] = wv.get(act_type, 0.0) + act.get("distance_km", 0)
+        wv["total"] += act.get("distance_km", 0)
+        wv["weekly_mechanical_stress"] += act.get("mechanical_stress", 0)
+
+    # Round all values
+    for week_key in weekly_volumes:
+        wv = weekly_volumes[week_key]
+        for k in wv:
+            wv[k] = round(wv[k], 1)
+
+    # Sort by week
+    weekly_volumes = dict(sorted(weekly_volumes.items()))
+
+    # =====================================================================
+    # 7. VMA = VO2max / 3.5
+    # =====================================================================
+    vma = round(vo2max_today / 3.5, 2) if vo2max_today else None
+
+    # =====================================================================
+    # Write JSON outputs
+    # =====================================================================
     os.makedirs(DATA_DIR, exist_ok=True)
 
     current = {
         "last_sync": datetime.now().isoformat(),
         "date": date_str,
         "profile": {
-            "vo2max": vo2max,
-            "vdot": vo2max,
+            "vo2max": vo2max_today,
+            "vma": vma,
+            "vdot": vo2max_today,
             "fc_max": ATHLETE_PROFILE["fc_max"],
             "fc_repos": ATHLETE_PROFILE["fc_repos_baseline"],
             "hrv_baseline": ATHLETE_PROFILE["hrv_baseline"],
@@ -312,8 +480,7 @@ def main():
         ("activities.json", activities),
         ("weekly_volumes.json", weekly_volumes),
     ]:
-        with open(os.path.join(DATA_DIR, name), "w", encoding="utf-8") as f:
-            json.dump(obj, f, indent=2, ensure_ascii=False)
+        _save_json(os.path.join(DATA_DIR, name), obj)
 
     rs = today_data["recovery_score"]
     print(f"\nSync complete: {date_str}")
@@ -321,8 +488,11 @@ def main():
     print(f"  HRV 7j:     {today_data.get('hrv_7day_avg', 'N/A')} ms")
     print(f"  RHR:        {rhr or 'N/A'} bpm")
     print(f"  Sleep:      {today_data.get('sleep_score', 'N/A')}/100")
-    print(f"  Activities: {len(activities)} (90 days)")
+    print(f"  VO2max:     {vo2max_today or 'N/A'} ml/kg/min")
+    print(f"  VMA:        {vma or 'N/A'} km/h")
+    print(f"  Activities: {len(activities)} (all time)")
     print(f"  History:    {len(history)} days")
+    print(f"  Weeks:      {len(weekly_volumes)}")
 
 
 if __name__ == "__main__":

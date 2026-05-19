@@ -272,7 +272,12 @@ main {
 .sleep-ring { width: 100%; height: 100%; }
 .sleep-hero-arc {
     transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
-    filter: drop-shadow(0 0 10px var(--purple));
+}
+.sleep-ring-wrap::after {
+    content: ''; position: absolute; inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, transparent 42%, rgba(124,92,252,0.08) 50%, transparent 72%);
+    pointer-events: none;
 }
 .sleep-center {
     position: absolute; inset: 0;
@@ -480,6 +485,220 @@ main {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 2px; }
+
+/* ── Range Pills ─────────────────────── */
+
+.range-pills {
+    display: flex; gap: 6px;
+    margin-bottom: 16px;
+}
+.range-pills .pill {
+    flex: 1;
+    padding: 8px 0;
+    background: var(--bg-pill);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 12px; font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.range-pills .pill:hover { border-color: rgba(255,255,255,0.12); }
+.range-pills .pill.active {
+    background: var(--green);
+    color: #000;
+    border-color: var(--green);
+}
+
+/* ── Sleep History ───────────────────── */
+
+.sleep-history {
+    margin-top: 16px;
+}
+.sleep-history-title {
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    margin-bottom: 12px;
+}
+.sleep-night-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+}
+.sleep-night-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+}
+.sleep-night-date {
+    font-size: 12px; font-weight: 500; color: var(--text-2);
+}
+.sleep-night-score {
+    font-size: 14px; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.sleep-night-score small {
+    font-weight: 500; color: var(--text-3); font-size: 11px;
+}
+.sleep-night-dur {
+    font-size: 12px; font-weight: 600; color: var(--text-2);
+}
+.sleep-night-bar {
+    display: flex; height: 10px; border-radius: 5px;
+    overflow: hidden; margin-top: 8px;
+    background: rgba(255,255,255,0.03);
+}
+.sleep-night-bar .sn-seg { height: 100%; }
+.sleep-night-bar .sn-deep  { background: #1e3a5f; }
+.sleep-night-bar .sn-light { background: #4ea8de; }
+.sleep-night-bar .sn-rem   { background: var(--purple); }
+.sleep-night-bar .sn-awake { background: var(--orange); }
+
+/* ── Performance Overhaul ────────────── */
+
+.perf-vo2-trend {
+    font-size: 16px;
+    margin-left: 4px;
+}
+
+/* Weekly recap */
+.perf-section-title {
+    font-size: 13px; font-weight: 600; color: var(--text-2);
+    margin-bottom: 10px;
+    margin-top: 16px;
+}
+.weekly-recap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.weekly-row {
+    display: flex; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+.weekly-row:last-child { border-bottom: none; }
+.weekly-icon {
+    font-size: 18px;
+    width: 32px; flex-shrink: 0;
+}
+.weekly-type {
+    flex: 1;
+    font-size: 13px; font-weight: 600; color: var(--text);
+}
+.weekly-vol {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin-right: 8px;
+}
+.weekly-change {
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+    min-width: 52px; text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.weekly-change.up   { background: rgba(0,241,159,0.12); color: var(--green); }
+.weekly-change.down { background: rgba(255,70,85,0.12);  color: var(--red);   }
+.weekly-change.flat { background: rgba(255,255,255,0.06); color: var(--text-3); }
+
+/* ACWR Gauge */
+.acwr-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.acwr-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+}
+.acwr-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--text-3); text-transform: uppercase;
+}
+.acwr-value {
+    font-size: 22px; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.acwr-bar-wrap {
+    position: relative; height: 8px; border-radius: 4px;
+    overflow: visible; margin: 8px 0 4px;
+}
+.acwr-bar-bg {
+    display: flex; height: 100%; border-radius: 4px; overflow: hidden;
+}
+.acwr-zone { height: 100%; }
+.acwr-zone.danger-low  { flex: 3; background: var(--red); opacity: 0.5; }
+.acwr-zone.warn-low    { flex: 1; background: var(--orange); opacity: 0.5; }
+.acwr-zone.safe        { flex: 2.5; background: var(--green); opacity: 0.5; }
+.acwr-zone.warn-high   { flex: 1; background: var(--orange); opacity: 0.5; }
+.acwr-zone.danger-high { flex: 2.5; background: var(--red); opacity: 0.5; }
+.acwr-marker {
+    position: absolute; top: -4px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--text);
+    transform: translateX(-50%);
+    transition: left 0.6s ease, background-color 0.3s;
+}
+.acwr-labels {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--text-3); font-weight: 500;
+    margin-top: 4px;
+}
+.acwr-status {
+    font-size: 12px; font-weight: 600;
+    margin-top: 8px; text-align: center;
+}
+
+/* Mechanical stress */
+.mech-stress-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.mech-stress-left {
+    display: flex; flex-direction: column; gap: 2px;
+}
+.mech-stress-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--text-3); text-transform: uppercase;
+}
+.mech-stress-val {
+    font-size: 32px; font-weight: 900; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.mech-stress-trend {
+    font-size: 13px; font-weight: 600;
+}
+
+/* Activity type icons */
+.activity-icon.running  { background: var(--green-dim); }
+.activity-icon.running svg { stroke: var(--green); }
+.activity-icon.walking  { background: rgba(255,140,66,0.12); }
+.activity-icon.walking svg,
+.activity-icon.walking .act-emoji { color: var(--orange); }
+.activity-icon.cycling  { background: rgba(124,92,252,0.12); }
+.activity-icon.cycling svg,
+.activity-icon.cycling .act-emoji { color: var(--purple); }
+.activity-icon.other    { background: rgba(78,168,222,0.12); }
+.activity-icon.other svg,
+.activity-icon.other .act-emoji { color: var(--blue); }
+.act-emoji {
+    font-size: 18px; line-height: 1;
+}
+.activity-elev {
+    font-size: 11px; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+}
 
 /* ── Responsive ───────────────────────── */
 

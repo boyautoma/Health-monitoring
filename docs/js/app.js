@@ -22,6 +22,8 @@ const LEVELS = {
     unknown:   { text: 'Données indisponibles',   color: '#555' },
 };
 
+// Store chart instances for destroy/recreate
+let chartInstances = {};
 let chartsRendered = {};
 
 // ── Navigation ──────────────────────────────
@@ -34,10 +36,32 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(target).classList.add('active');
 
-        if (target === 'pageTrends' && !chartsRendered.trends) renderTrends();
-        if (target === 'pageSleep'  && !chartsRendered.sleep)  renderSleepChart();
+        if (target === 'pageTrends' && !chartsRendered.trends) renderTrends(7);
+        if (target === 'pageSleep'  && !chartsRendered.sleep)  renderSleepTab(7);
         if (target === 'pagePerf'   && !chartsRendered.perf)   renderPerfCharts();
     });
+});
+
+// ── Range Pills — Trends ────────────────────
+
+document.getElementById('trendsRangePills').addEventListener('click', function(e) {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    this.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const days = parseInt(pill.dataset.days, 10);
+    renderTrends(days);
+});
+
+// ── Range Pills — Sleep ─────────────────────
+
+document.getElementById('sleepRangePills').addEventListener('click', function(e) {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    this.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const days = parseInt(pill.dataset.days, 10);
+    renderSleepTab(days);
 });
 
 // ── Data Loading ────────────────────────────
@@ -183,9 +207,46 @@ function renderPerf(c) {
     document.getElementById('perfVo2').textContent = p.vo2max != null ? Math.round(p.vo2max) : '--';
     const vma = p.vo2max != null ? (p.vo2max / 3.5).toFixed(1) : '--';
     document.getElementById('perfVma').textContent = vma;
+
+    // VO2max trend indicator
+    renderVo2Trend();
+}
+
+// ── VO2max Trend ────────────────────────────
+
+function renderVo2Trend() {
+    const h = DATA.history || [];
+    const trendEl = document.getElementById('perfVo2Trend');
+    if (!trendEl) return;
+
+    // Find recent entries with vo2max
+    const withVo2 = h.filter(d => d.vo2max != null);
+    if (withVo2.length < 2) {
+        trendEl.textContent = '';
+        return;
+    }
+    const latest = withVo2[0].vo2max;
+    const prev = withVo2[1].vo2max;
+    if (latest > prev) {
+        trendEl.textContent = '↑';
+        trendEl.style.color = COLORS.green;
+    } else if (latest < prev) {
+        trendEl.textContent = '↓';
+        trendEl.style.color = COLORS.red;
+    } else {
+        trendEl.textContent = '→';
+        trendEl.style.color = COLORS.gold;
+    }
 }
 
 // ── Charts ──────────────────────────────────
+
+function destroyChart(key) {
+    if (chartInstances[key]) {
+        chartInstances[key].destroy();
+        delete chartInstances[key];
+    }
+}
 
 function chartOpts(unit, color) {
     return {
@@ -225,6 +286,49 @@ function chartOpts(unit, color) {
     };
 }
 
+function stackedBarOpts(unit) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true, position: 'bottom',
+                labels: {
+                    color: '#999', boxWidth: 10, boxHeight: 10,
+                    font: { size: 10, family: 'Inter' }, padding: 12,
+                    usePointStyle: true, pointStyle: 'rectRounded',
+                },
+            },
+            tooltip: {
+                backgroundColor: '#1a1a1a',
+                titleColor: '#fff',
+                bodyColor: '#999',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                padding: 10,
+                callbacks: {
+                    label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} ${unit}`,
+                },
+            },
+        },
+        scales: {
+            x: {
+                stacked: true,
+                grid: { display: false },
+                ticks: { font: { size: 9, family: 'Inter' }, color: '#444', maxRotation: 0, maxTicksLimit: 7 },
+                border: { display: false },
+            },
+            y: {
+                stacked: true,
+                grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                ticks: { font: { size: 9, family: 'Inter' }, color: '#444', maxTicksLimit: 5 },
+                border: { display: false },
+            },
+        },
+    };
+}
+
 function makeGradient(ctx, color) {
     const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.parentElement?.offsetHeight || 140);
     g.addColorStop(0, color + '30');
@@ -232,11 +336,11 @@ function makeGradient(ctx, color) {
     return g;
 }
 
-function createLine(canvasId, labels, data, unit, color) {
+function createLine(canvasId, labels, data, unit, color, chartKey) {
     const el = document.getElementById(canvasId);
-    if (!el || !data.length) return;
+    if (!el || !data.length) return null;
     const ctx = el.getContext('2d');
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels,
@@ -249,13 +353,15 @@ function createLine(canvasId, labels, data, unit, color) {
         },
         options: chartOpts(unit, color),
     });
+    if (chartKey) chartInstances[chartKey] = chart;
+    return chart;
 }
 
-function createBar(canvasId, labels, data, unit, color) {
+function createBar(canvasId, labels, data, unit, color, chartKey) {
     const el = document.getElementById(canvasId);
-    if (!el || !data.length) return;
+    if (!el || !data.length) return null;
     const ctx = el.getContext('2d');
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels,
@@ -270,63 +376,490 @@ function createBar(canvasId, labels, data, unit, color) {
         },
         options: chartOpts(unit, color),
     });
+    if (chartKey) chartInstances[chartKey] = chart;
+    return chart;
 }
 
-function renderTrends() {
+function createStackedBar(canvasId, labels, datasets, unit, chartKey) {
+    const el = document.getElementById(canvasId);
+    if (!el) return null;
+    const ctx = el.getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: stackedBarOpts(unit),
+    });
+    if (chartKey) chartInstances[chartKey] = chart;
+    return chart;
+}
+
+// ── Filter History by Days ──────────────────
+
+function filterHistory(days) {
     const h = (DATA.history || []).slice().reverse();
+    if (!h.length) return [];
+    if (days === 0) return h; // all
+    return h.slice(-days);
+}
+
+// ── Trends Tab ──────────────────────────────
+
+function renderTrends(days) {
+    if (days == null) days = 7;
+
+    // Update label
+    const label = document.getElementById('trendsRangeLabel');
+    if (label) {
+        label.textContent = days === 0 ? 'Toutes les données' : `${days} derniers jours`;
+    }
+
+    // Destroy existing charts
+    destroyChart('recovChart');
+    destroyChart('hrvChart');
+    destroyChart('rhrChart');
+    destroyChart('stressChart');
+
+    const h = filterHistory(days);
     if (!h.length) return;
 
     const dates = h.map(d => fmtDate(d.date));
 
-    createLine('recovChart',  dates, h.map(d => d.recovery_score),  '/100', COLORS.green);
-    createLine('hrvChart',    dates, h.map(d => d.hrv_7day_avg),    'ms',   COLORS.teal);
-    createLine('rhrChart',    dates, h.map(d => d.rhr),             'bpm',  COLORS.orange);
-    createLine('stressChart', dates, h.map(d => d.stress_avg),      '/100', COLORS.red);
+    createLine('recovChart',  dates, h.map(d => d.recovery_score),  '/100', COLORS.green, 'recovChart');
+    createLine('hrvChart',    dates, h.map(d => d.hrv_7day_avg),    'ms',   COLORS.teal,  'hrvChart');
+    createLine('rhrChart',    dates, h.map(d => d.rhr),             'bpm',  COLORS.orange, 'rhrChart');
+    createLine('stressChart', dates, h.map(d => d.stress_avg),      '/100', COLORS.red,    'stressChart');
 
     chartsRendered.trends = true;
 }
 
-function renderSleepChart() {
-    const h = (DATA.history || []).slice().reverse();
+// ── Sleep Tab ───────────────────────────────
+
+function renderSleepTab(days) {
+    if (days == null) days = 7;
+
+    // Update chart title
+    const titleEl = document.getElementById('sleepChartTitle');
+    if (titleEl) {
+        titleEl.textContent = days === 0
+            ? 'Score sommeil — toutes les données'
+            : `Score sommeil — ${days} jours`;
+    }
+
+    // Destroy existing sleep chart
+    destroyChart('sleepChart');
+
+    const h = filterHistory(days);
     if (!h.length) return;
+
     const dates = h.map(d => fmtDate(d.date));
-    createLine('sleepChart', dates, h.map(d => d.sleep_score), '/100', COLORS.purple);
+    createLine('sleepChart', dates, h.map(d => d.sleep_score), '/100', COLORS.purple, 'sleepChart');
+
+    // Render sleep history list
+    renderSleepHistory(h);
+
     chartsRendered.sleep = true;
 }
 
+function renderSleepHistory(historyData) {
+    const container = document.getElementById('sleepHistory');
+    if (!container) return;
+
+    // Remove old night cards (keep the title)
+    const oldCards = container.querySelectorAll('.sleep-night-card');
+    oldCards.forEach(c => c.remove());
+
+    // Show last N nights (most recent first)
+    const nights = historyData.slice().reverse().slice(0, 14);
+
+    nights.forEach(d => {
+        const deep  = d.deep_sleep_min  || 0;
+        const light = d.light_sleep_min || 0;
+        const rem   = d.rem_sleep_min   || 0;
+        const awake = d.awake_min       || 0;
+        const total = deep + light + rem + awake || 1;
+        const durMin = d.sleep_duration_min || total;
+
+        const card = document.createElement('div');
+        card.className = 'sleep-night-card';
+        card.innerHTML = `
+            <div class="sleep-night-top">
+                <span class="sleep-night-date">${fmtDateFull(d.date)}</span>
+                <span class="sleep-night-dur">${fmtMin(durMin)}</span>
+                <span class="sleep-night-score">${d.sleep_score != null ? d.sleep_score : '--'}<small>/100</small></span>
+            </div>
+            <div class="sleep-night-bar">
+                <div class="sn-seg sn-deep" style="width:${(deep/total*100).toFixed(1)}%"></div>
+                <div class="sn-seg sn-light" style="width:${(light/total*100).toFixed(1)}%"></div>
+                <div class="sn-seg sn-rem" style="width:${(rem/total*100).toFixed(1)}%"></div>
+                <div class="sn-seg sn-awake" style="width:${(awake/total*100).toFixed(1)}%"></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// ── Performance Tab ─────────────────────────
+
 function renderPerfCharts() {
-    // Volume
+    const c = DATA.current || {};
+
+    // Weekly recap by activity type
+    renderWeeklyRecap();
+
+    // ACWR gauge
+    renderACWR();
+
+    // Mechanical stress
+    renderMechStress();
+
+    // Volume chart (stacked)
+    renderVolumeChart();
+
+    // Activities list (all types)
+    renderActivitiesList();
+
+    chartsRendered.perf = true;
+}
+
+function renderWeeklyRecap() {
     const v = DATA.volumes || {};
-    const vKeys = Object.keys(v);
-    if (vKeys.length) {
-        createBar('volumeChart', vKeys.map(k => fmtDate(k)), vKeys.map(k => v[k]), 'km', COLORS.blue);
+    const container = document.getElementById('weeklyRecap');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const vKeys = Object.keys(v).sort();
+    if (vKeys.length === 0) {
+        container.innerHTML = '<div style="font-size:12px;color:#555;text-align:center;padding:16px;">Aucune donnée</div>';
+        return;
     }
 
-    // Activities
-    const acts = (DATA.activities || []).slice(0, 15);
-    const list = document.getElementById('activitiesList');
+    const currentWeekKey = vKeys[vKeys.length - 1];
+    const prevWeekKey = vKeys.length > 1 ? vKeys[vKeys.length - 2] : null;
+
+    const currentWeek = v[currentWeekKey];
+    const prevWeek = prevWeekKey ? v[prevWeekKey] : null;
+
+    // Handle both old format (number) and new format (object with types)
+    const isNewFormat = typeof currentWeek === 'object' && currentWeek !== null && !Array.isArray(currentWeek);
+
+    const types = [
+        { key: 'running',  icon: '🏃', label: 'Course' },
+        { key: 'walking',  icon: '🚶', label: 'Marche' },
+        { key: 'cycling',  icon: '🚴', label: 'Vélo' },
+    ];
+
+    if (isNewFormat) {
+        types.forEach(t => {
+            const curr = currentWeek[t.key] || 0;
+            const prev = prevWeek && typeof prevWeek === 'object' ? (prevWeek[t.key] || 0) : 0;
+            const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
+
+            let changeClass = 'flat';
+            let changeText = '—';
+            if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
+            else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
+
+            const row = document.createElement('div');
+            row.className = 'weekly-row';
+            row.innerHTML = `
+                <span class="weekly-icon">${t.icon}</span>
+                <span class="weekly-type">${t.label}</span>
+                <span class="weekly-vol">${curr.toFixed(1)} km</span>
+                <span class="weekly-change ${changeClass}">${changeText}</span>
+            `;
+            container.appendChild(row);
+        });
+
+        // Total row
+        const totalCurr = currentWeek.total || (types.reduce((s, t) => s + (currentWeek[t.key] || 0), 0));
+        const totalPrev = prevWeek && typeof prevWeek === 'object'
+            ? (prevWeek.total || types.reduce((s, t) => s + (prevWeek[t.key] || 0), 0))
+            : (typeof prevWeek === 'number' ? prevWeek : 0);
+        const totalChange = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : (totalCurr > 0 ? 100 : 0);
+        let totalClass = 'flat';
+        let totalText = '—';
+        if (totalChange > 0) { totalClass = 'up'; totalText = `+${Math.round(totalChange)}%`; }
+        else if (totalChange < 0) { totalClass = 'down'; totalText = `${Math.round(totalChange)}%`; }
+
+        const totalRow = document.createElement('div');
+        totalRow.className = 'weekly-row';
+        totalRow.style.fontWeight = '700';
+        totalRow.innerHTML = `
+            <span class="weekly-icon">📊</span>
+            <span class="weekly-type">Total</span>
+            <span class="weekly-vol">${totalCurr.toFixed(1)} km</span>
+            <span class="weekly-change ${totalClass}">${totalText}</span>
+        `;
+        container.appendChild(totalRow);
+    } else {
+        // Old format: just numbers per week
+        const curr = typeof currentWeek === 'number' ? currentWeek : 0;
+        const prev = prevWeek != null && typeof prevWeek === 'number' ? prevWeek : 0;
+        const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
+        let changeClass = 'flat';
+        let changeText = '—';
+        if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
+        else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
+
+        const row = document.createElement('div');
+        row.className = 'weekly-row';
+        row.innerHTML = `
+            <span class="weekly-icon">🏃</span>
+            <span class="weekly-type">Total</span>
+            <span class="weekly-vol">${curr.toFixed(1)} km</span>
+            <span class="weekly-change ${changeClass}">${changeText}</span>
+        `;
+        container.appendChild(row);
+    }
+}
+
+function renderACWR() {
+    const acts = DATA.activities || [];
+    if (!acts.length) return;
+
+    const now = new Date();
+    const msInDay = 86400000;
+
+    // Compute acute (7 days) and chronic (28 days) total distance
+    let acute = 0;
+    let chronic28 = 0;
     acts.forEach(a => {
+        const d = new Date(a.date);
+        const daysAgo = (now - d) / msInDay;
+        if (daysAgo <= 7) acute += (a.distance_km || 0);
+        if (daysAgo <= 28) chronic28 += (a.distance_km || 0);
+    });
+
+    const chronicWeekly = chronic28 / 4;
+    const acwr = chronicWeekly > 0 ? acute / chronicWeekly : 0;
+
+    // Display
+    const valEl = document.getElementById('acwrValue');
+    if (valEl) valEl.textContent = acwr.toFixed(2);
+
+    // Position marker (gauge spans 0 to 2.0)
+    const markerEl = document.getElementById('acwrMarker');
+    if (markerEl) {
+        const pct = Math.min(100, Math.max(0, (acwr / 2.0) * 100));
+        markerEl.style.left = pct + '%';
+
+        // Color based on zone
+        let markerColor;
+        if (acwr >= 0.8 && acwr <= 1.3) markerColor = COLORS.green;
+        else if ((acwr >= 0.6 && acwr < 0.8) || (acwr > 1.3 && acwr <= 1.5)) markerColor = COLORS.orange;
+        else markerColor = COLORS.red;
+        markerEl.style.backgroundColor = markerColor;
+    }
+
+    // Status text
+    const statusEl = document.getElementById('acwrStatus');
+    if (statusEl) {
+        if (acwr >= 0.8 && acwr <= 1.3) {
+            statusEl.textContent = 'Zone optimale';
+            statusEl.style.color = COLORS.green;
+        } else if ((acwr >= 0.6 && acwr < 0.8) || (acwr > 1.3 && acwr <= 1.5)) {
+            statusEl.textContent = 'Attention';
+            statusEl.style.color = COLORS.orange;
+        } else if (acwr < 0.6) {
+            statusEl.textContent = 'Désentraînement';
+            statusEl.style.color = COLORS.red;
+        } else {
+            statusEl.textContent = 'Surcharge';
+            statusEl.style.color = COLORS.red;
+        }
+    }
+}
+
+function renderMechStress() {
+    const v = DATA.volumes || {};
+    const vKeys = Object.keys(v).sort();
+    if (!vKeys.length) return;
+
+    const currentWeekKey = vKeys[vKeys.length - 1];
+    const prevWeekKey = vKeys.length > 1 ? vKeys[vKeys.length - 2] : null;
+    const currentWeek = v[currentWeekKey];
+    const prevWeek = prevWeekKey ? v[prevWeekKey] : null;
+
+    // Try to get mechanical_stress from new format
+    let currStress = 0;
+    let prevStress = 0;
+
+    if (typeof currentWeek === 'object' && currentWeek !== null) {
+        currStress = currentWeek.weekly_mechanical_stress || 0;
+    }
+    if (prevWeek && typeof prevWeek === 'object' && prevWeek !== null) {
+        prevStress = prevWeek.weekly_mechanical_stress || 0;
+    }
+
+    // If no mechanical stress in volumes, sum from activities
+    if (currStress === 0) {
+        const acts = DATA.activities || [];
+        const now = new Date();
+        const msInDay = 86400000;
+        acts.forEach(a => {
+            const d = new Date(a.date);
+            const daysAgo = (now - d) / msInDay;
+            if (daysAgo <= 7) currStress += (a.mechanical_stress || 0);
+            if (daysAgo > 7 && daysAgo <= 14) prevStress += (a.mechanical_stress || 0);
+        });
+    }
+
+    const valEl = document.getElementById('mechStressVal');
+    if (valEl) valEl.textContent = Math.round(currStress);
+
+    const trendEl = document.getElementById('mechStressTrend');
+    if (trendEl) {
+        if (prevStress > 0) {
+            const change = ((currStress - prevStress) / prevStress * 100);
+            if (change > 5) {
+                trendEl.textContent = `↑ +${Math.round(change)}%`;
+                trendEl.style.color = COLORS.orange;
+            } else if (change < -5) {
+                trendEl.textContent = `↓ ${Math.round(change)}%`;
+                trendEl.style.color = COLORS.green;
+            } else {
+                trendEl.textContent = '→ stable';
+                trendEl.style.color = COLORS.gold;
+            }
+        } else {
+            trendEl.textContent = '';
+        }
+    }
+}
+
+function renderVolumeChart() {
+    destroyChart('volumeChart');
+
+    const v = DATA.volumes || {};
+    const vKeys = Object.keys(v).sort();
+    if (!vKeys.length) return;
+
+    const labels = vKeys.map(k => fmtDate(k));
+
+    // Check if new format (objects) or old format (numbers)
+    const firstVal = v[vKeys[0]];
+    const isNewFormat = typeof firstVal === 'object' && firstVal !== null;
+
+    if (isNewFormat) {
+        const runData    = vKeys.map(k => (v[k].running || 0));
+        const walkData   = vKeys.map(k => (v[k].walking || 0));
+        const cycleData  = vKeys.map(k => (v[k].cycling || 0));
+
+        const datasets = [
+            {
+                label: 'Course',
+                data: runData,
+                backgroundColor: COLORS.blue + '80',
+                borderColor: COLORS.blue,
+                borderWidth: 1,
+                borderRadius: 4,
+                borderSkipped: false,
+            },
+            {
+                label: 'Marche',
+                data: walkData,
+                backgroundColor: COLORS.orange + '80',
+                borderColor: COLORS.orange,
+                borderWidth: 1,
+                borderRadius: 4,
+                borderSkipped: false,
+            },
+            {
+                label: 'Vélo',
+                data: cycleData,
+                backgroundColor: COLORS.purple + '80',
+                borderColor: COLORS.purple,
+                borderWidth: 1,
+                borderRadius: 4,
+                borderSkipped: false,
+            },
+        ];
+
+        createStackedBar('volumeChart', labels, datasets, 'km', 'volumeChart');
+    } else {
+        // Old format — simple bar
+        const data = vKeys.map(k => typeof v[k] === 'number' ? v[k] : 0);
+        createBar('volumeChart', labels, data, 'km', COLORS.blue, 'volumeChart');
+    }
+}
+
+function renderActivitiesList() {
+    const acts = (DATA.activities || []).slice(0, 20);
+    const list = document.getElementById('activitiesList');
+    if (!list) return;
+
+    // Remove old rows (keep the title)
+    const oldRows = list.querySelectorAll('.activity-row');
+    oldRows.forEach(r => r.remove());
+
+    acts.forEach(a => {
+        const type = (a.type || 'running').toLowerCase();
+        const icon = getActivityEmoji(type);
+        const iconClass = getActivityClass(type);
+
         const row = document.createElement('div');
         row.className = 'activity-row';
+
+        // Build stats based on type
+        let statsHtml = `<span class="activity-dist">${a.distance_km != null ? a.distance_km + ' km' : '--'}</span>`;
+
+        if (type === 'running') {
+            statsHtml += `<span class="activity-pace">${a.avg_pace || '--'}/km</span>`;
+        } else if (type === 'cycling') {
+            const speed = a.avg_speed_kmh != null ? a.avg_speed_kmh.toFixed(1) + ' km/h' : '--';
+            statsHtml += `<span class="activity-pace">${speed}</span>`;
+        } else if (type === 'walking') {
+            if (a.elevation_gain != null) {
+                statsHtml += `<span class="activity-elev">↗ ${a.elevation_gain} m</span>`;
+            }
+        }
+
+        // Elevation for non-walking if available
+        if (type !== 'walking' && a.elevation_gain != null) {
+            statsHtml += `<span class="activity-elev">↗ ${a.elevation_gain} m</span>`;
+        }
+
         row.innerHTML = `
-            <div class="activity-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="5" r="3"/><path d="M6.5 8.5l3 3.5v7m5-7l-3-3.5M6 21l4-4m4 4l-2-4"/>
-                </svg>
+            <div class="activity-icon ${iconClass}">
+                <span class="act-emoji">${icon}</span>
             </div>
             <div class="activity-main">
-                <div class="activity-name">${a.name || 'Course'}</div>
+                <div class="activity-name">${a.name || getActivityName(type)}</div>
                 <div class="activity-date-text">${fmtDateFull(a.date)}</div>
             </div>
             <div class="activity-stats">
-                <span class="activity-dist">${a.distance_km} km</span>
-                <span class="activity-pace">${a.avg_pace || '--'}/km</span>
+                ${statsHtml}
             </div>
         `;
         list.appendChild(row);
     });
+}
 
-    chartsRendered.perf = true;
+function getActivityEmoji(type) {
+    switch (type) {
+        case 'running': return '🏃';
+        case 'walking': return '🚶';
+        case 'cycling': return '🚴';
+        default:        return '⚡';
+    }
+}
+
+function getActivityClass(type) {
+    switch (type) {
+        case 'running': return 'running';
+        case 'walking': return 'walking';
+        case 'cycling': return 'cycling';
+        default:        return 'other';
+    }
+}
+
+function getActivityName(type) {
+    switch (type) {
+        case 'running': return 'Course';
+        case 'walking': return 'Marche';
+        case 'cycling': return 'Vélo';
+        default:        return 'Activité';
+    }
 }
 
 // ── Helpers ─────────────────────────────────
