@@ -11,6 +11,20 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>">
 </head>
 <body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <div class="login-logo">APPCOACH</div>
+            <div class="login-subtitle">Health Monitoring</div>
+            <form id="loginForm" autocomplete="off">
+                <input type="text" id="loginUser" placeholder="Username" autocomplete="username" required>
+                <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" required>
+                <button type="submit" class="login-btn">Connexion</button>
+                <div class="login-error" id="loginError"></div>
+            </form>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-inner">
@@ -254,6 +268,34 @@
         </button>
     </nav>
 
+    <script>
+    (function(){
+        const HASH = '157db9450b8775d03a3c4d7d9759c46293b8a8e05e073dc316e7c1f7f76383ef';
+        const ls = document.getElementById('loginScreen');
+        const form = document.getElementById('loginForm');
+        const err = document.getElementById('loginError');
+
+        if (sessionStorage.getItem('auth') === HASH) {
+            ls.classList.add('hidden');
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value;
+            const p = document.getElementById('loginPass').value;
+            const data = new TextEncoder().encode(u + ':' + p);
+            const buf = await crypto.subtle.digest('SHA-256', data);
+            const h = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+            if (h === HASH) {
+                sessionStorage.setItem('auth', HASH);
+                ls.classList.add('hidden');
+            } else {
+                err.textContent = 'Identifiants incorrects';
+                document.getElementById('loginPass').value = '';
+            }
+        });
+    })();
+    </script>
     <script src="js/app.js"></script>
 </body>
 </html>
