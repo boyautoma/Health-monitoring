@@ -359,69 +359,187 @@ main {
 .dot.rem   { background: var(--purple); }
 .dot.awake { background: var(--orange); }
 
-/* ── Performance ──────────────────────── */
+/* ── Performance — Training Load Banner ── */
 
-.perf-cards {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    margin-bottom: 16px;
-}
-.perf-big {
+.load-banner {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 24px 16px;
-    text-align: center;
+    padding: 16px 16px 12px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
 }
-.perf-big-val {
-    display: block;
-    font-size: 40px; font-weight: 900; color: var(--text);
+.load-banner::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 16px;
+    opacity: 0.06;
+    pointer-events: none;
+    transition: background 0.4s;
+}
+.load-banner.zone-safe::before    { background: radial-gradient(ellipse at 20% 30%, var(--green), transparent 70%); }
+.load-banner.zone-warn::before    { background: radial-gradient(ellipse at 20% 30%, var(--orange), transparent 70%); }
+.load-banner.zone-danger::before  { background: radial-gradient(ellipse at 20% 30%, var(--red), transparent 70%); }
+
+.load-banner-top {
+    display: flex; align-items: flex-start; gap: 16px;
+    position: relative; z-index: 1;
+}
+.load-banner-left {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 72px;
+}
+.load-acwr-value {
+    font-size: 36px; font-weight: 900; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.load-acwr-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--text-3); text-transform: uppercase; margin-top: 2px;
+}
+.load-banner-right {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding-top: 4px;
+}
+.load-status {
+    font-size: 14px; font-weight: 700; line-height: 1.2;
+}
+.load-stress-line {
+    display: flex; align-items: baseline; gap: 4px;
+    margin-top: 4px;
+}
+.load-stress-num {
+    font-size: 18px; font-weight: 800; color: var(--text);
     font-variant-numeric: tabular-nums;
-    line-height: 1;
 }
-.perf-big-label {
-    display: block;
-    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-    color: var(--text-3); text-transform: uppercase;
-    margin-top: 8px;
+.load-stress-unit {
+    font-size: 10px; color: var(--text-3); font-weight: 500;
 }
-.perf-big-label small {
-    font-weight: 400; letter-spacing: 0; color: var(--text-3);
+.load-stress-trend {
+    font-size: 12px; font-weight: 600; margin-left: 4px;
 }
 
-/* ── Activities ───────────────────────── */
+.load-gauge-wrap {
+    position: relative; height: 6px; border-radius: 3px;
+    overflow: visible; margin-top: 14px; z-index: 1;
+}
+.load-gauge-bg {
+    display: flex; height: 100%; border-radius: 3px; overflow: hidden;
+}
+
+/* ── Performance — Week Strip ──────────── */
+
+.week-strip {
+    display: flex; align-items: stretch; gap: 6px;
+    margin-bottom: 10px;
+}
+.week-sport {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2px;
+}
+.week-sport-icon {
+    font-size: 16px; line-height: 1;
+}
+.week-sport-vol {
+    font-size: 14px; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.week-sport-unit {
+    font-size: 10px; color: var(--text-3); font-weight: 500;
+    margin-top: -2px;
+}
+.week-sport-change {
+    font-size: 10px; font-weight: 600;
+    padding: 1px 6px; border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+}
+.week-sport-change.up   { background: rgba(0,241,159,0.12); color: var(--green); }
+.week-sport-change.down { background: rgba(255,70,85,0.12);  color: var(--red); }
+.week-sport-change.flat { background: rgba(255,255,255,0.06); color: var(--text-3); }
+
+.week-total {
+    min-width: 64px;
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 8px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2px;
+}
+.week-total-val {
+    font-size: 15px; font-weight: 900; color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.week-total-label {
+    font-size: 9px; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+/* ── Performance — Activities Feed ────── */
+
+.activities-feed {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 14px 8px;
+    margin-bottom: 10px;
+}
+.feed-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px;
+}
+.feed-title {
+    font-size: 13px; font-weight: 700; color: var(--text);
+    letter-spacing: 0.02em;
+}
+.feed-count {
+    font-size: 11px; color: var(--text-3);
+}
 
 .activity-row {
     display: flex; align-items: center;
-    padding: 14px 0;
+    padding: 10px 0;
     border-bottom: 1px solid var(--border);
+    border-left: 3px solid transparent;
+    margin-left: -14px;
+    padding-left: 11px;
+    padding-right: 0;
 }
 .activity-row:last-child { border-bottom: none; }
-.activity-icon {
-    width: 36px; height: 36px; border-radius: 10px;
-    background: var(--green-dim);
-    display: flex; align-items: center; justify-content: center;
-    margin-right: 12px; flex-shrink: 0;
-}
-.activity-icon svg {
-    width: 18px; height: 18px; stroke: var(--green);
-}
+.activity-row.type-running  { border-left-color: var(--green); }
+.activity-row.type-walking  { border-left-color: var(--orange); }
+.activity-row.type-cycling  { border-left-color: var(--purple); }
+.activity-row.type-other    { border-left-color: var(--blue); }
+
 .activity-main { flex: 1; min-width: 0; }
 .activity-name {
-    font-size: 13px; font-weight: 600; color: var(--text);
+    font-size: 12px; font-weight: 600; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .activity-date-text {
-    font-size: 11px; color: var(--text-3); margin-top: 2px;
+    font-size: 10px; color: var(--text-3); margin-top: 1px;
 }
 .activity-stats {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    margin-right: 8px;
 }
 .activity-dist {
-    font-size: 14px; font-weight: 700; color: var(--text);
+    font-size: 13px; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums;
 }
 .activity-pace {
-    font-size: 11px; color: var(--text-2);
+    font-size: 10px; color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+}
+.activity-elev {
+    font-size: 10px; color: var(--text-3);
     font-variant-numeric: tabular-nums;
 }
 
@@ -638,80 +756,7 @@ main {
 
 /* ── Performance Overhaul ────────────── */
 
-.perf-vo2-trend {
-    font-size: 16px;
-    margin-left: 4px;
-}
-
-/* Weekly recap */
-.perf-section-title {
-    font-size: 13px; font-weight: 600; color: var(--text-2);
-    margin-bottom: 10px;
-    margin-top: 16px;
-}
-.weekly-recap {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 12px;
-}
-.weekly-row {
-    display: flex; align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-}
-.weekly-row:last-child { border-bottom: none; }
-.weekly-icon {
-    font-size: 18px;
-    width: 32px; flex-shrink: 0;
-}
-.weekly-type {
-    flex: 1;
-    font-size: 13px; font-weight: 600; color: var(--text);
-}
-.weekly-vol {
-    font-size: 14px; font-weight: 700; color: var(--text);
-    font-variant-numeric: tabular-nums;
-    margin-right: 8px;
-}
-.weekly-change {
-    font-size: 11px; font-weight: 600;
-    padding: 2px 8px; border-radius: 6px;
-    min-width: 52px; text-align: center;
-    font-variant-numeric: tabular-nums;
-}
-.weekly-change.up   { background: rgba(0,241,159,0.12); color: var(--green); }
-.weekly-change.down { background: rgba(255,70,85,0.12);  color: var(--red);   }
-.weekly-change.flat { background: rgba(255,255,255,0.06); color: var(--text-3); }
-
-/* ACWR Gauge */
-.acwr-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 12px;
-}
-.acwr-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 12px;
-}
-.acwr-label {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-    color: var(--text-3); text-transform: uppercase;
-}
-.acwr-value {
-    font-size: 22px; font-weight: 800; color: var(--text);
-    font-variant-numeric: tabular-nums;
-}
-.acwr-bar-wrap {
-    position: relative; height: 8px; border-radius: 4px;
-    overflow: visible; margin: 8px 0 4px;
-}
-.acwr-bar-bg {
-    display: flex; height: 100%; border-radius: 4px; overflow: hidden;
-}
+/* ACWR gauge zones (shared) */
 .acwr-zone { height: 100%; }
 .acwr-zone.danger-low  { flex: 3; background: var(--red); opacity: 0.5; }
 .acwr-zone.warn-low    { flex: 1; background: var(--orange); opacity: 0.5; }
@@ -719,65 +764,118 @@ main {
 .acwr-zone.warn-high   { flex: 1; background: var(--orange); opacity: 0.5; }
 .acwr-zone.danger-high { flex: 2.5; background: var(--red); opacity: 0.5; }
 .acwr-marker {
-    position: absolute; top: -4px;
-    width: 16px; height: 16px;
+    position: absolute; top: -5px;
+    width: 14px; height: 14px;
     border-radius: 50%;
     border: 2px solid var(--text);
     transform: translateX(-50%);
     transition: left 0.6s ease, background-color 0.3s;
 }
-.acwr-labels {
-    display: flex; justify-content: space-between;
-    font-size: 9px; color: var(--text-3); font-weight: 500;
-    margin-top: 4px;
+
+/* VO2max/VMA reference strip */
+.perf-vo2-trend {
+    font-size: 13px; margin-left: 2px;
 }
-.acwr-status {
-    font-size: 12px; font-weight: 600;
-    margin-top: 8px; text-align: center;
+.ref-strip {
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px;
+    padding: 10px 0 16px;
+}
+.ref-item {
+    display: flex; align-items: baseline; gap: 4px;
+}
+.ref-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3); text-transform: uppercase;
+}
+.ref-val {
+    font-size: 16px; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.ref-unit {
+    font-size: 10px; color: var(--text-3);
+}
+.ref-sep {
+    width: 1px; height: 16px; background: var(--border);
+}
+.ref-source {
+    text-align: center;
+    font-size: 9px; color: var(--text-3);
+    margin-top: -4px; margin-bottom: 10px;
 }
 
-/* Mechanical stress */
-.mech-stress-card {
+/* Volume card with toggles */
+.vol-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 12px;
-    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 14px 10px;
+    margin-bottom: 10px;
 }
-.mech-stress-left {
-    display: flex; flex-direction: column; gap: 2px;
+.vol-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px;
 }
-.mech-stress-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-    color: var(--text-3); text-transform: uppercase;
+.vol-title {
+    font-size: 13px; font-weight: 700; color: var(--text);
 }
-.mech-stress-val {
-    font-size: 32px; font-weight: 900; color: var(--text);
-    font-variant-numeric: tabular-nums; line-height: 1;
+.vol-total {
+    font-size: 18px; font-weight: 900; color: var(--text);
+    font-variant-numeric: tabular-nums;
 }
-.mech-stress-trend {
-    font-size: 13px; font-weight: 600;
+.vol-toggles {
+    display: flex; gap: 6px;
+    margin-bottom: 10px;
+}
+.vol-tog {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.vol-tog.active {
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border-color: rgba(255,255,255,0.15);
+}
+.vol-tog-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+.vol-tog.active .vol-tog-dot {
+    opacity: 1;
+}
+.vol-tog-dot.running  { background: var(--green); }
+.vol-tog-dot.walking  { background: var(--orange); }
+.vol-tog-dot.cycling  { background: var(--purple); }
+.vol-card .chart-wrap {
+    height: 160px;
 }
 
-/* Activity type icons */
-.activity-icon.running  { background: var(--green-dim); }
-.activity-icon.running svg { stroke: var(--green); }
-.activity-icon.walking  { background: rgba(255,140,66,0.12); }
-.activity-icon.walking svg,
-.activity-icon.walking .act-emoji { color: var(--orange); }
-.activity-icon.cycling  { background: rgba(124,92,252,0.12); }
-.activity-icon.cycling svg,
-.activity-icon.cycling .act-emoji { color: var(--purple); }
-.activity-icon.other    { background: rgba(78,168,222,0.12); }
-.activity-icon.other svg,
-.activity-icon.other .act-emoji { color: var(--blue); }
-.act-emoji {
-    font-size: 18px; line-height: 1;
-}
-.activity-elev {
-    font-size: 11px; color: var(--text-3);
+/* Stress badge on activity rows */
+.activity-stress {
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    margin-left: 8px; flex-shrink: 0;
     font-variant-numeric: tabular-nums;
+    min-width: 32px; text-align: center;
+}
+.activity-stress.stress-low {
+    background: var(--green-dim); color: var(--green);
+}
+.activity-stress.stress-med {
+    background: rgba(255,140,66,0.12); color: var(--orange);
+}
+.activity-stress.stress-high {
+    background: var(--red-dim); color: var(--red);
 }
 
 /* ── Responsive ───────────────────────── */

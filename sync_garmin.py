@@ -467,9 +467,76 @@ def main():
     weekly_volumes = dict(sorted(weekly_volumes.items()))
 
     # =====================================================================
-    # 7. VMA = VO2max / 3.5
+    # 7. VO2max / VMA / VDOT
     # =====================================================================
-    vma = round(vo2max_today / 3.5, 2) if vo2max_today else None
+    # If Garmin doesn't provide VO2max, estimate from best running perf
+    import math
+
+    fc_max = ATHLETE_PROFILE["fc_max"]
+    fc_repos = ATHLETE_PROFILE["fc_repos_baseline"]
+    estimated_vdot = None
+    estimated_vo2max = None
+    vdot_source = None
+
+    if not vo2max_today:
+        best_vdot = 0
+        best_vdot_src = None
+        hr_estimates = []
+
+        for act in activities:
+            if act.get("type") != "running":
+                continue
+            dist = act.get("distance_km", 0)
+            pace = act.get("avg_pace")
+            avg_hr = act.get("avg_hr")
+            if not pace or dist < 3:
+                continue
+            try:
+                act_date = datetime.strptime(act["date"], "%Y-%m-%d")
+                if (datetime.now() - act_date).days > 180:
+                    continue
+            except (ValueError, KeyError):
+                continue
+
+            parts = pace.split(":")
+            pace_sec = int(parts[0]) * 60 + int(parts[1])
+            time_sec = pace_sec * dist
+            time_min = time_sec / 60
+            dist_m = dist * 1000
+            velocity = dist_m / time_min
+            vo2_cost = -4.60 + 0.182258 * velocity + 0.000104 * velocity * velocity
+
+            # Method 1: Pure VDOT
+            pct = (0.8 + 0.1894393 * math.exp(-0.012778 * time_min)
+                   + 0.2989558 * math.exp(-0.1932605 * time_min))
+            vdot = vo2_cost / pct
+            if vdot > best_vdot:
+                best_vdot = vdot
+                best_vdot_src = f"{dist}km @ {pace}/km ({act['date']})"
+
+            # Method 2: HR-based VO2max (only for hard efforts > 70% HRR)
+            if avg_hr and avg_hr > fc_repos + 0.7 * (fc_max - fc_repos):
+                hrr_pct = (avg_hr - fc_repos) / (fc_max - fc_repos)
+                vo2max_hr = vo2_cost / hrr_pct
+                if 25 < vo2max_hr < 70:
+                    hr_estimates.append((vo2max_hr, act))
+
+        # Choose best method
+        if len(hr_estimates) >= 3:
+            hr_estimates.sort(key=lambda x: x[0], reverse=True)
+            idx = max(0, len(hr_estimates) // 4)
+            estimated_vo2max = round(hr_estimates[idx][0], 1)
+            src_act = hr_estimates[idx][1]
+            vdot_source = (f"{src_act['distance_km']}km @ {src_act['avg_pace']}/km "
+                           f"FC {src_act['avg_hr']} ({src_act['date']})")
+            print(f"  VO2max (HR method, p75): {estimated_vo2max} ({vdot_source})")
+
+        if best_vdot > 0:
+            estimated_vdot = round(best_vdot, 1)
+            print(f"  VDOT (best pace): {estimated_vdot} ({best_vdot_src})")
+
+    effective_vo2 = vo2max_today or estimated_vo2max or estimated_vdot
+    vma = round(effective_vo2 / 3.5, 2) if effective_vo2 else None
 
     # =====================================================================
     # Write JSON outputs
@@ -480,9 +547,10 @@ def main():
         "last_sync": datetime.now().isoformat(),
         "date": date_str,
         "profile": {
-            "vo2max": vo2max_today,
+            "vo2max": effective_vo2,
             "vma": vma,
-            "vdot": vo2max_today,
+            "vdot": estimated_vdot or vo2max_today,
+            "vdot_source": vdot_source,
             "fc_max": ATHLETE_PROFILE["fc_max"],
             "fc_repos": ATHLETE_PROFILE["fc_repos_baseline"],
             "hrv_baseline": ATHLETE_PROFILE["hrv_baseline"],

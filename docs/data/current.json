@@ -2,9 +2,10 @@
   "last_sync": "2026-05-19T23:45:51.437457",
   "date": "2026-05-19",
   "profile": {
-    "vo2max": null,
-    "vma": null,
-    "vdot": null,
+    "vo2max": 47,
+    "vma": 13.4,
+    "vdot": 47,
+    "vdot_source": "Intervals analysis: 1000m @ 4:09/km FC 182 (15 mai), HR-method p75=47",
     "fc_max": 198,
     "fc_repos": 53,
     "hrv_baseline": 51,

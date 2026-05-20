@@ -84,7 +84,7 @@ async function loadData() {
 }
 
 async function fetchJSON(url) {
-    const r = await fetch(url);
+    const r = await fetch(url + '?v=' + Date.now());
     if (!r.ok) throw new Error(`${url}: ${r.status}`);
     return r.json();
 }
@@ -203,39 +203,103 @@ function renderSleep(c) {
 }
 
 function renderPerf(c) {
+    // Try Garmin VO2max first, then estimate from running data
     const p = c.profile || {};
-    document.getElementById('perfVo2').textContent = p.vo2max != null ? Math.round(p.vo2max) : '--';
-    const vma = p.vo2max != null ? (p.vo2max / 3.5).toFixed(1) : '--';
-    document.getElementById('perfVma').textContent = vma;
+    const garminVo2 = p.vo2max;
 
-    // VO2max trend indicator
-    renderVo2Trend();
+    if (garminVo2 != null) {
+        document.getElementById('perfVo2').textContent = Math.round(garminVo2);
+        document.getElementById('perfVma').textContent = (garminVo2 / 3.5).toFixed(1);
+        document.getElementById('perfVdot').textContent = Math.round(garminVo2);
+    } else {
+        // Estimate VDOT from best recent running performance
+        estimateVdot();
+    }
 }
 
-// ── VO2max Trend ────────────────────────────
+// ── VDOT / VO2max Estimation ───────────────
 
-function renderVo2Trend() {
-    const h = DATA.history || [];
-    const trendEl = document.getElementById('perfVo2Trend');
-    if (!trendEl) return;
+const FC_MAX = 198;
+const FC_REPOS = 53;
 
-    // Find recent entries with vo2max
-    const withVo2 = h.filter(d => d.vo2max != null);
-    if (withVo2.length < 2) {
-        trendEl.textContent = '';
+function estimateVdot() {
+    const acts = DATA.activities || [];
+    const now = new Date();
+    const msInDay = 86400000;
+
+    // Find running activities in last 180 days with pace + HR data
+    const candidates = acts.filter(a => {
+        if (a.type !== 'running' || !a.avg_pace || !a.distance_km || a.distance_km < 3) return false;
+        const daysAgo = (now - new Date(a.date)) / msInDay;
+        return daysAgo <= 180;
+    });
+
+    if (!candidates.length) return;
+
+    let bestVdot = 0;
+    let bestAct = null;
+    const hrEstimates = [];
+
+    candidates.forEach(a => {
+        const parts = a.avg_pace.split(':').map(Number);
+        const paceSecPerKm = parts[0] * 60 + parts[1];
+        const timeSec = paceSecPerKm * a.distance_km;
+        const timeMin = timeSec / 60;
+        const distMeters = a.distance_km * 1000;
+        const velocity = distMeters / timeMin;
+
+        // Jack Daniels oxygen cost at this pace
+        const vo2 = -4.60 + 0.182258 * velocity + 0.000104 * velocity * velocity;
+
+        // Method 1: Pure VDOT (assumes race effort)
+        const pctVo2max = 0.8 + 0.1894393 * Math.exp(-0.012778 * timeMin)
+                        + 0.2989558 * Math.exp(-0.1932605 * timeMin);
+        const vdot = vo2 / pctVo2max;
+        if (vdot > bestVdot) { bestVdot = vdot; bestAct = a; }
+
+        // Method 2: HR-based VO2max (Swain: %HRR ~ %VO2R)
+        // Better for training runs since it accounts for sub-maximal effort
+        if (a.avg_hr && a.avg_hr > FC_REPOS + 0.7 * (FC_MAX - FC_REPOS)) {
+            // Only use efforts > 70% HRR (hard enough to be reliable)
+            const hrrPct = (a.avg_hr - FC_REPOS) / (FC_MAX - FC_REPOS);
+            const vo2max_hr = vo2 / hrrPct;
+            if (vo2max_hr > 25 && vo2max_hr < 70) {
+                hrEstimates.push({ vo2max: vo2max_hr, act: a, hr: a.avg_hr });
+            }
+        }
+    });
+
+    // Choose best method
+    let finalVo2, method, sourceAct;
+
+    if (hrEstimates.length >= 3) {
+        // Use 75th percentile of HR-based estimates (robust, ignores outliers)
+        hrEstimates.sort((a, b) => b.vo2max - a.vo2max);
+        const idx = Math.floor(hrEstimates.length * 0.25);
+        const best = hrEstimates[idx];
+        finalVo2 = Math.round(best.vo2max * 10) / 10;
+        sourceAct = best.act;
+        method = 'HR';
+    } else if (bestVdot > 0) {
+        finalVo2 = Math.round(bestVdot * 10) / 10;
+        sourceAct = bestAct;
+        method = 'VDOT';
+    } else {
         return;
     }
-    const latest = withVo2[0].vo2max;
-    const prev = withVo2[1].vo2max;
-    if (latest > prev) {
-        trendEl.textContent = '↑';
-        trendEl.style.color = COLORS.green;
-    } else if (latest < prev) {
-        trendEl.textContent = '↓';
-        trendEl.style.color = COLORS.red;
-    } else {
-        trendEl.textContent = '→';
-        trendEl.style.color = COLORS.gold;
+
+    const vma = (finalVo2 / 3.5).toFixed(1);
+
+    document.getElementById('perfVo2').textContent = finalVo2.toFixed(0);
+    document.getElementById('perfVma').textContent = vma;
+    const vdotEl = document.getElementById('perfVdot');
+    if (vdotEl) vdotEl.textContent = Math.round(bestVdot);
+
+    const src = document.getElementById('refSource');
+    if (src && sourceAct) {
+        const hrInfo = method === 'HR' ? ' FC ' + Math.round(sourceAct.avg_hr) : '';
+        src.textContent = sourceAct.distance_km + 'km @ ' + sourceAct.avg_pace + '/km' + hrInfo
+            + ' (' + fmtDateFull(sourceAct.date) + ')';
     }
 }
 
@@ -701,165 +765,34 @@ function renderSleepHistory(historyData) {
 // ── Performance Tab ─────────────────────────
 
 function renderPerfCharts() {
-    const c = DATA.current || {};
-
-    // Weekly recap by activity type
-    renderWeeklyRecap();
-
-    // ACWR gauge
-    renderACWR();
-
-    // Mechanical stress
-    renderMechStress();
-
-    // Volume chart (stacked)
     renderVolumeChart();
-
-    // Activities list (all types)
+    initVolumeToggles();
+    renderTrainingBanner();
+    renderWeeklyRecap();
     renderActivitiesList();
 
     chartsRendered.perf = true;
 }
 
-function renderWeeklyRecap() {
-    const v = DATA.volumes || {};
-    const container = document.getElementById('weeklyRecap');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const vKeys = Object.keys(v).sort();
-    if (vKeys.length === 0) {
-        container.innerHTML = '<div style="font-size:12px;color:#555;text-align:center;padding:16px;">Aucune donnée</div>';
-        return;
-    }
-
-    const currentWeekKey = vKeys[vKeys.length - 1];
-    const prevWeekKey = vKeys.length > 1 ? vKeys[vKeys.length - 2] : null;
-
-    const currentWeek = v[currentWeekKey];
-    const prevWeek = prevWeekKey ? v[prevWeekKey] : null;
-
-    // Handle both old format (number) and new format (object with types)
-    const isNewFormat = typeof currentWeek === 'object' && currentWeek !== null && !Array.isArray(currentWeek);
-
-    const types = [
-        { key: 'running',  icon: '🏃', label: 'Course' },
-        { key: 'walking',  icon: '🚶', label: 'Marche' },
-        { key: 'cycling',  icon: '🚴', label: 'Vélo' },
-    ];
-
-    if (isNewFormat) {
-        types.forEach(t => {
-            const curr = currentWeek[t.key] || 0;
-            const prev = prevWeek && typeof prevWeek === 'object' ? (prevWeek[t.key] || 0) : 0;
-            const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
-
-            let changeClass = 'flat';
-            let changeText = '—';
-            if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
-            else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
-
-            const row = document.createElement('div');
-            row.className = 'weekly-row';
-            row.innerHTML = `
-                <span class="weekly-icon">${t.icon}</span>
-                <span class="weekly-type">${t.label}</span>
-                <span class="weekly-vol">${curr.toFixed(1)} km</span>
-                <span class="weekly-change ${changeClass}">${changeText}</span>
-            `;
-            container.appendChild(row);
-        });
-
-        // Total row
-        const totalCurr = currentWeek.total || (types.reduce((s, t) => s + (currentWeek[t.key] || 0), 0));
-        const totalPrev = prevWeek && typeof prevWeek === 'object'
-            ? (prevWeek.total || types.reduce((s, t) => s + (prevWeek[t.key] || 0), 0))
-            : (typeof prevWeek === 'number' ? prevWeek : 0);
-        const totalChange = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : (totalCurr > 0 ? 100 : 0);
-        let totalClass = 'flat';
-        let totalText = '—';
-        if (totalChange > 0) { totalClass = 'up'; totalText = `+${Math.round(totalChange)}%`; }
-        else if (totalChange < 0) { totalClass = 'down'; totalText = `${Math.round(totalChange)}%`; }
-
-        const totalRow = document.createElement('div');
-        totalRow.className = 'weekly-row';
-        totalRow.style.fontWeight = '700';
-        totalRow.innerHTML = `
-            <span class="weekly-icon">📊</span>
-            <span class="weekly-type">Total</span>
-            <span class="weekly-vol">${totalCurr.toFixed(1)} km</span>
-            <span class="weekly-change ${totalClass}">${totalText}</span>
-        `;
-        container.appendChild(totalRow);
-    } else {
-        // Old format: compute per-type breakdown from activities
-        const acts = DATA.activities || [];
-        const now = new Date();
-        const msInDay = 86400000;
-        const currByType = { running: 0, walking: 0, cycling: 0 };
-        const prevByType = { running: 0, walking: 0, cycling: 0 };
-        let totalCurr = 0, totalPrev = 0;
-
-        acts.forEach(a => {
-            const d = new Date(a.date);
-            const daysAgo = (now - d) / msInDay;
-            const t = (a.type || 'running').toLowerCase();
-            const dist = a.distance_km || 0;
-            if (daysAgo <= 7) {
-                if (t in currByType) currByType[t] += dist;
-                totalCurr += dist;
-            } else if (daysAgo <= 14) {
-                if (t in prevByType) prevByType[t] += dist;
-                totalPrev += dist;
-            }
-        });
-
-        types.forEach(t => {
-            const curr = currByType[t.key] || 0;
-            const prev = prevByType[t.key] || 0;
-            const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
-            let changeClass = 'flat', changeText = '—';
-            if (change > 0) { changeClass = 'up'; changeText = `+${Math.round(change)}%`; }
-            else if (change < 0) { changeClass = 'down'; changeText = `${Math.round(change)}%`; }
-            const row = document.createElement('div');
-            row.className = 'weekly-row';
-            row.innerHTML = `
-                <span class="weekly-icon">${t.icon}</span>
-                <span class="weekly-type">${t.label}</span>
-                <span class="weekly-vol">${curr.toFixed(1)} km</span>
-                <span class="weekly-change ${changeClass}">${changeText}</span>
-            `;
-            container.appendChild(row);
-        });
-
-        const totalChange = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : (totalCurr > 0 ? 100 : 0);
-        let totalClass = 'flat', totalText = '—';
-        if (totalChange > 0) { totalClass = 'up'; totalText = `+${Math.round(totalChange)}%`; }
-        else if (totalChange < 0) { totalClass = 'down'; totalText = `${Math.round(totalChange)}%`; }
-        const totalRow = document.createElement('div');
-        totalRow.className = 'weekly-row';
-        totalRow.style.fontWeight = '700';
-        totalRow.innerHTML = `
-            <span class="weekly-icon">📊</span>
-            <span class="weekly-type">Total</span>
-            <span class="weekly-vol">${totalCurr.toFixed(1)} km</span>
-            <span class="weekly-change ${totalClass}">${totalText}</span>
-        `;
-        container.appendChild(totalRow);
-    }
+function initVolumeToggles() {
+    const wrap = document.getElementById('volToggles');
+    if (!wrap) return;
+    wrap.addEventListener('click', (e) => {
+        const btn = e.target.closest('.vol-tog');
+        if (!btn) return;
+        btn.classList.toggle('active');
+        renderVolumeChart();
+    });
 }
 
-function renderACWR() {
+function renderTrainingBanner() {
+    // Combined ACWR + Mech Stress in one banner
     const acts = DATA.activities || [];
     if (!acts.length) return;
 
     const now = new Date();
     const msInDay = 86400000;
-
-    // Compute acute (7 days) and chronic (28 days) mechanical stress
-    // Weighted by activity type: running >> walking > cycling
-    let acute = 0;
-    let chronic28 = 0;
+    let acute = 0, chronic28 = 0;
     acts.forEach(a => {
         const d = new Date(a.date);
         const daysAgo = (now - d) / msInDay;
@@ -871,17 +804,15 @@ function renderACWR() {
     const chronicWeekly = chronic28 / 4;
     const acwr = chronicWeekly > 0 ? acute / chronicWeekly : 0;
 
-    // Display
+    // ACWR value
     const valEl = document.getElementById('acwrValue');
     if (valEl) valEl.textContent = acwr.toFixed(2);
 
-    // Position marker (gauge spans 0 to 2.0)
+    // Marker
     const markerEl = document.getElementById('acwrMarker');
     if (markerEl) {
         const pct = Math.min(100, Math.max(0, (acwr / 2.0) * 100));
         markerEl.style.left = pct + '%';
-
-        // Color based on zone
         let markerColor;
         if (acwr >= 0.8 && acwr <= 1.3) markerColor = COLORS.green;
         else if ((acwr >= 0.6 && acwr < 0.8) || (acwr > 1.3 && acwr <= 1.5)) markerColor = COLORS.orange;
@@ -889,51 +820,47 @@ function renderACWR() {
         markerEl.style.backgroundColor = markerColor;
     }
 
-    // Status text
+    // Status
     const statusEl = document.getElementById('acwrStatus');
+    const banner = document.getElementById('loadBanner');
+    let zoneClass = 'zone-safe';
     if (statusEl) {
         if (acwr >= 0.8 && acwr <= 1.3) {
             statusEl.textContent = 'Zone optimale';
             statusEl.style.color = COLORS.green;
+            zoneClass = 'zone-safe';
         } else if ((acwr >= 0.6 && acwr < 0.8) || (acwr > 1.3 && acwr <= 1.5)) {
             statusEl.textContent = 'Attention';
             statusEl.style.color = COLORS.orange;
+            zoneClass = 'zone-warn';
         } else if (acwr < 0.6) {
-            statusEl.textContent = 'Désentraînement';
+            statusEl.textContent = 'Desentrainement';
             statusEl.style.color = COLORS.red;
+            zoneClass = 'zone-danger';
         } else {
             statusEl.textContent = 'Surcharge';
             statusEl.style.color = COLORS.red;
+            zoneClass = 'zone-danger';
         }
     }
-}
+    if (banner) {
+        banner.classList.remove('zone-safe', 'zone-warn', 'zone-danger');
+        banner.classList.add(zoneClass);
+    }
 
-function renderMechStress() {
+    // Mech stress (weekly)
     const v = DATA.volumes || {};
     const vKeys = Object.keys(v).sort();
-    if (!vKeys.length) return;
-
-    const currentWeekKey = vKeys[vKeys.length - 1];
-    const prevWeekKey = vKeys.length > 1 ? vKeys[vKeys.length - 2] : null;
-    const currentWeek = v[currentWeekKey];
-    const prevWeek = prevWeekKey ? v[prevWeekKey] : null;
-
-    // Try to get mechanical_stress from new format
-    let currStress = 0;
-    let prevStress = 0;
-
-    if (typeof currentWeek === 'object' && currentWeek !== null) {
-        currStress = currentWeek.weekly_mechanical_stress || 0;
+    let currStress = 0, prevStress = 0;
+    if (vKeys.length) {
+        const cw = v[vKeys[vKeys.length - 1]];
+        if (typeof cw === 'object' && cw !== null) currStress = cw.weekly_mechanical_stress || 0;
+        if (vKeys.length > 1) {
+            const pw = v[vKeys[vKeys.length - 2]];
+            if (typeof pw === 'object' && pw !== null) prevStress = pw.weekly_mechanical_stress || 0;
+        }
     }
-    if (prevWeek && typeof prevWeek === 'object' && prevWeek !== null) {
-        prevStress = prevWeek.weekly_mechanical_stress || 0;
-    }
-
-    // If no mechanical stress in volumes, sum from activities
     if (currStress === 0) {
-        const acts = DATA.activities || [];
-        const now = new Date();
-        const msInDay = 86400000;
         acts.forEach(a => {
             const d = new Date(a.date);
             const daysAgo = (now - d) / msInDay;
@@ -942,28 +869,109 @@ function renderMechStress() {
         });
     }
 
-    const valEl = document.getElementById('mechStressVal');
-    if (valEl) valEl.textContent = Math.round(currStress);
+    const mechVal = document.getElementById('mechStressVal');
+    if (mechVal) mechVal.textContent = Math.round(currStress);
 
     const trendEl = document.getElementById('mechStressTrend');
-    if (trendEl) {
-        if (prevStress > 0) {
-            const change = ((currStress - prevStress) / prevStress * 100);
-            if (change > 5) {
-                trendEl.textContent = `↑ +${Math.round(change)}%`;
-                trendEl.style.color = COLORS.orange;
-            } else if (change < -5) {
-                trendEl.textContent = `↓ ${Math.round(change)}%`;
-                trendEl.style.color = COLORS.green;
-            } else {
-                trendEl.textContent = '→ stable';
-                trendEl.style.color = COLORS.gold;
-            }
+    if (trendEl && prevStress > 0) {
+        const change = ((currStress - prevStress) / prevStress * 100);
+        if (change > 5) {
+            trendEl.textContent = '↑' + Math.round(change) + '%';
+            trendEl.style.color = COLORS.orange;
+        } else if (change < -5) {
+            trendEl.textContent = '↓' + Math.round(Math.abs(change)) + '%';
+            trendEl.style.color = COLORS.green;
         } else {
-            trendEl.textContent = '';
+            trendEl.textContent = '~ stable';
+            trendEl.style.color = COLORS.gold;
         }
     }
 }
+
+function renderWeeklyRecap() {
+    const container = document.getElementById('weeklyRecap');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const types = [
+        { key: 'running',  icon: '🏃' },
+        { key: 'walking',  icon: '🚶' },
+        { key: 'cycling',  icon: '🚴' },
+    ];
+
+    // Get current & previous week data
+    let currByType = { running: 0, walking: 0, cycling: 0 };
+    let prevByType = { running: 0, walking: 0, cycling: 0 };
+    let totalCurr = 0, totalPrev = 0;
+
+    const v = DATA.volumes || {};
+    const vKeys = Object.keys(v).sort();
+    const isNewFormat = vKeys.length > 0 && typeof v[vKeys[0]] === 'object';
+
+    if (isNewFormat && vKeys.length > 0) {
+        const cw = v[vKeys[vKeys.length - 1]];
+        types.forEach(t => { currByType[t.key] = cw[t.key] || 0; });
+        totalCurr = cw.total || types.reduce((s, t) => s + currByType[t.key], 0);
+        if (vKeys.length > 1) {
+            const pw = v[vKeys[vKeys.length - 2]];
+            types.forEach(t => { prevByType[t.key] = pw[t.key] || 0; });
+            totalPrev = pw.total || types.reduce((s, t) => s + prevByType[t.key], 0);
+        }
+    } else {
+        // Fallback: compute from activities
+        const acts = DATA.activities || [];
+        const now = new Date();
+        const msInDay = 86400000;
+        acts.forEach(a => {
+            const d = new Date(a.date);
+            const daysAgo = (now - d) / msInDay;
+            const t = (a.type || 'running').toLowerCase();
+            const dist = a.distance_km || 0;
+            if (daysAgo <= 7) { if (t in currByType) currByType[t] += dist; totalCurr += dist; }
+            else if (daysAgo <= 14) { if (t in prevByType) prevByType[t] += dist; totalPrev += dist; }
+        });
+    }
+
+    // Build sport pills
+    types.forEach(t => {
+        const curr = currByType[t.key];
+        const prev = prevByType[t.key];
+        const change = prev > 0 ? ((curr - prev) / prev * 100) : (curr > 0 ? 100 : 0);
+        let changeClass = 'flat', changeText = '—';
+        if (Math.abs(change) >= 1) {
+            if (change > 0) { changeClass = 'up'; changeText = '+' + Math.round(change) + '%'; }
+            else { changeClass = 'down'; changeText = Math.round(change) + '%'; }
+        }
+
+        const pill = document.createElement('div');
+        pill.className = 'week-sport';
+        pill.innerHTML = `
+            <span class="week-sport-icon">${t.icon}</span>
+            <span class="week-sport-vol">${curr.toFixed(1)}</span>
+            <span class="week-sport-unit">km</span>
+            <span class="week-sport-change ${changeClass}">${changeText}</span>
+        `;
+        container.appendChild(pill);
+    });
+
+    // Total pill
+    const totalChange = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : (totalCurr > 0 ? 100 : 0);
+    let totalClass = 'flat', totalText = '—';
+    if (Math.abs(totalChange) >= 1) {
+        if (totalChange > 0) { totalClass = 'up'; totalText = '+' + Math.round(totalChange) + '%'; }
+        else { totalClass = 'down'; totalText = Math.round(totalChange) + '%'; }
+    }
+    const totalPill = document.createElement('div');
+    totalPill.className = 'week-total';
+    totalPill.innerHTML = `
+        <span class="week-total-val">${totalCurr.toFixed(1)}</span>
+        <span class="week-total-label">total km</span>
+        <span class="week-sport-change ${totalClass}">${totalText}</span>
+    `;
+    container.appendChild(totalPill);
+}
+
+/* renderACWR and renderMechStress merged into renderTrainingBanner above */
 
 function renderVolumeChart() {
     destroyChart('volumeChart');
@@ -972,73 +980,94 @@ function renderVolumeChart() {
     const vKeys = Object.keys(v).sort();
     if (!vKeys.length) return;
 
-    const labels = vKeys.map(k => fmtDate(k));
-
-    // Check if new format (objects) or old format (numbers)
-    const firstVal = v[vKeys[0]];
-    const isNewFormat = typeof firstVal === 'object' && firstVal !== null;
-
-    if (isNewFormat) {
-        const runData    = vKeys.map(k => (v[k].running || 0));
-        const walkData   = vKeys.map(k => (v[k].walking || 0));
-        const cycleData  = vKeys.map(k => (v[k].cycling || 0));
-
-        const datasets = [
-            {
-                label: 'Course',
-                data: runData,
-                backgroundColor: COLORS.blue + '80',
-                borderColor: COLORS.blue,
-                borderWidth: 1,
-                borderRadius: 4,
-                borderSkipped: false,
-            },
-            {
-                label: 'Marche',
-                data: walkData,
-                backgroundColor: COLORS.orange + '80',
-                borderColor: COLORS.orange,
-                borderWidth: 1,
-                borderRadius: 4,
-                borderSkipped: false,
-            },
-            {
-                label: 'Vélo',
-                data: cycleData,
-                backgroundColor: COLORS.purple + '80',
-                borderColor: COLORS.purple,
-                borderWidth: 1,
-                borderRadius: 4,
-                borderSkipped: false,
-            },
-        ];
-
-        createStackedBar('volumeChart', labels, datasets, 'km', 'volumeChart');
-    } else {
-        // Old format — simple bar
-        const data = vKeys.map(k => typeof v[k] === 'number' ? v[k] : 0);
-        createBar('volumeChart', labels, data, 'km', COLORS.blue, 'volumeChart');
+    // Determine which sports are toggled on
+    const toggles = document.querySelectorAll('#volToggles .vol-tog.active');
+    const activeSports = Array.from(toggles).map(b => b.dataset.sport);
+    if (!activeSports.length) {
+        // Nothing selected — show empty
+        const totalEl = document.getElementById('volTotal');
+        if (totalEl) totalEl.textContent = '0 km';
+        return;
     }
+
+    const isNewFormat = typeof v[vKeys[0]] === 'object' && v[vKeys[0]] !== null;
+
+    // Show last 16 weeks max for readability
+    const displayKeys = vKeys.slice(-16);
+    const labels = displayKeys.map(k => fmtDate(k));
+
+    // Compute combined volume per week
+    const combined = displayKeys.map(k => {
+        if (isNewFormat) {
+            return activeSports.reduce((sum, s) => sum + (v[k][s] || 0), 0);
+        }
+        return typeof v[k] === 'number' ? v[k] : 0;
+    });
+
+    // Current week total for header
+    const currentTotal = combined[combined.length - 1] || 0;
+    const totalEl = document.getElementById('volTotal');
+    if (totalEl) totalEl.textContent = currentTotal.toFixed(1) + ' km';
+
+    // Build gradient color from active sports
+    let lineColor = COLORS.green;
+    if (activeSports.length === 1) {
+        if (activeSports[0] === 'walking') lineColor = COLORS.orange;
+        else if (activeSports[0] === 'cycling') lineColor = COLORS.purple;
+    } else {
+        lineColor = COLORS.teal; // combined = teal
+    }
+
+    const el = document.getElementById('volumeChart');
+    if (!el) return;
+    const ctx = el.getContext('2d');
+
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: combined,
+                borderColor: lineColor,
+                backgroundColor: makeGradient(ctx, lineColor),
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHitRadius: 12,
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            ...chartOpts('km', lineColor),
+            plugins: {
+                ...chartOpts('km', lineColor).plugins,
+                legend: { display: false },
+            },
+        },
+    });
+    chartInstances['volumeChart'] = chart;
 }
 
 function renderActivitiesList() {
-    const acts = (DATA.activities || []).slice(0, 20);
+    const acts = (DATA.activities || []).slice(0, 30);
     const list = document.getElementById('activitiesList');
     if (!list) return;
 
-    // Remove old rows (keep the title)
+    // Remove old rows (keep the header)
     const oldRows = list.querySelectorAll('.activity-row');
     oldRows.forEach(r => r.remove());
 
+    // Show count
+    const countEl = document.getElementById('actCount');
+    if (countEl) countEl.textContent = (DATA.activities || []).length + ' total';
+
     acts.forEach(a => {
         const type = (a.type || 'running').toLowerCase();
-        const icon = getActivityEmoji(type);
-        const iconClass = getActivityClass(type);
 
         const row = document.createElement('div');
-        row.className = 'activity-row';
+        row.className = 'activity-row type-' + getActivityClass(type);
 
-        // Build stats based on type
+        // Build stats
         let statsHtml = `<span class="activity-dist">${a.distance_km != null ? a.distance_km + ' km' : '--'}</span>`;
 
         if (type === 'running') {
@@ -1046,28 +1075,28 @@ function renderActivitiesList() {
         } else if (type === 'cycling') {
             const speed = a.avg_speed_kmh != null ? a.avg_speed_kmh.toFixed(1) + ' km/h' : '--';
             statsHtml += `<span class="activity-pace">${speed}</span>`;
-        } else if (type === 'walking') {
-            if (a.elevation_gain != null) {
-                statsHtml += `<span class="activity-elev">↗ ${a.elevation_gain} m</span>`;
-            }
+        }
+        if (a.elevation_gain) {
+            statsHtml += `<span class="activity-elev">${a.elevation_gain}m D+</span>`;
         }
 
-        // Elevation for non-walking if available
-        if (type !== 'walking' && a.elevation_gain != null) {
-            statsHtml += `<span class="activity-elev">↗ ${a.elevation_gain} m</span>`;
-        }
+        const stress = a.mechanical_stress != null ? Math.round(a.mechanical_stress) : null;
+        const stressClass = stress == null ? '' : stress >= 70 ? 'stress-high' : stress >= 40 ? 'stress-med' : 'stress-low';
+        const stressBadge = stress != null ? `<span class="activity-stress ${stressClass}">${stress}</span>` : '';
+
+        // Shortened name (remove location prefix if redundant)
+        let name = a.name || getActivityName(type);
+        if (name.length > 28) name = name.substring(0, 26) + '...';
 
         row.innerHTML = `
-            <div class="activity-icon ${iconClass}">
-                <span class="act-emoji">${icon}</span>
-            </div>
             <div class="activity-main">
-                <div class="activity-name">${a.name || getActivityName(type)}</div>
+                <div class="activity-name">${name}</div>
                 <div class="activity-date-text">${fmtDateFull(a.date)}</div>
             </div>
             <div class="activity-stats">
                 ${statsHtml}
             </div>
+            ${stressBadge}
         `;
         list.appendChild(row);
     });
