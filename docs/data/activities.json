@@ -17,7 +17,7 @@
     "training_effect_aerobic": 2.5,
     "training_effect_anaerobic": 0.8999999761581421,
     "avg_power": null,
-    "mechanical_stress": 77.9
+    "mechanical_stress": 77.8
   },
   {
     "activityId": 22926718675,
@@ -77,7 +77,7 @@
     "training_effect_aerobic": 2.4000000953674316,
     "training_effect_anaerobic": 0.20000000298023224,
     "avg_power": null,
-    "mechanical_stress": 78.6
+    "mechanical_stress": 78.7
   },
   {
     "date": "2026-05-15",
@@ -129,7 +129,7 @@
     "training_effect_aerobic": 2.9000000953674316,
     "training_effect_anaerobic": 2.0,
     "avg_power": null,
-    "mechanical_stress": 74.3
+    "mechanical_stress": 74.4
   },
   {
     "activityId": 22845747304,
@@ -149,7 +149,7 @@
     "training_effect_aerobic": 2.0999999046325684,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 75.2
+    "mechanical_stress": 75.1
   },
   {
     "date": "2026-05-10",
@@ -253,7 +253,7 @@
     "training_effect_aerobic": 3.5,
     "training_effect_anaerobic": 0.0,
     "avg_power": 316.0,
-    "mechanical_stress": 63.3
+    "mechanical_stress": 63.1
   },
   {
     "activityId": 22763116297,
@@ -293,7 +293,7 @@
     "training_effect_aerobic": 2.4000000953674316,
     "training_effect_anaerobic": 0.20000000298023224,
     "avg_power": null,
-    "mechanical_stress": 76.4
+    "mechanical_stress": 76.5
   },
   {
     "activityId": 22740127518,
@@ -345,7 +345,7 @@
     "training_effect_aerobic": 3.0999999046325684,
     "training_effect_anaerobic": 0.0,
     "avg_power": 302.0,
-    "mechanical_stress": 48.0
+    "mechanical_stress": 48.4
   },
   {
     "activityId": 22678608617,
@@ -385,7 +385,7 @@
     "training_effect_aerobic": 2.0,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 66.8
+    "mechanical_stress": 66.9
   },
   {
     "activityId": 22657624514,
@@ -405,7 +405,7 @@
     "training_effect_aerobic": 2.299999952316284,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 79.8
+    "mechanical_stress": 79.7
   },
   {
     "activityId": 22644571858,
@@ -489,7 +489,7 @@
     "training_effect_aerobic": 3.4000000953674316,
     "training_effect_anaerobic": 0.0,
     "avg_power": 313.0,
-    "mechanical_stress": 59.3
+    "mechanical_stress": 59.6
   },
   {
     "activityId": 22596400059,
@@ -573,7 +573,7 @@
     "training_effect_aerobic": 2.0,
     "training_effect_anaerobic": 0.0,
     "avg_power": 211.0,
-    "mechanical_stress": 29.7
+    "mechanical_stress": 30.0
   },
   {
     "activityId": 22550679370,
@@ -593,7 +593,7 @@
     "training_effect_aerobic": 2.4000000953674316,
     "training_effect_anaerobic": 0.20000000298023224,
     "avg_power": null,
-    "mechanical_stress": 77.7
+    "mechanical_stress": 77.8
   },
   {
     "activityId": 22538912482,
@@ -645,7 +645,7 @@
     "training_effect_aerobic": 4.800000190734863,
     "training_effect_anaerobic": 2.5999999046325684,
     "avg_power": 350.0,
-    "mechanical_stress": 92.0
+    "mechanical_stress": 92.2
   },
   {
     "date": "2026-04-11",
@@ -697,7 +697,7 @@
     "training_effect_aerobic": 2.700000047683716,
     "training_effect_anaerobic": 0.5,
     "avg_power": null,
-    "mechanical_stress": 66.0
+    "mechanical_stress": 66.1
   },
   {
     "date": "2026-04-09",
@@ -729,7 +729,7 @@
     "training_effect_aerobic": 3.4000000953674316,
     "training_effect_anaerobic": 0.0,
     "avg_power": 302.0,
-    "mechanical_stress": 81.3
+    "mechanical_stress": 81.5
   },
   {
     "activityId": 22456175939,
@@ -749,7 +749,7 @@
     "training_effect_aerobic": 2.9000000953674316,
     "training_effect_anaerobic": 0.699999988079071,
     "avg_power": null,
-    "mechanical_stress": 65.2
+    "mechanical_stress": 65.3
   },
   {
     "activityId": 22440198822,
@@ -789,7 +789,7 @@
     "training_effect_aerobic": 2.4000000953674316,
     "training_effect_anaerobic": 0.10000000149011612,
     "avg_power": null,
-    "mechanical_stress": 61.0
+    "mechanical_stress": 61.1
   },
   {
     "activityId": 22419365362,
@@ -809,7 +809,7 @@
     "training_effect_aerobic": 2.0999999046325684,
     "training_effect_anaerobic": 0.699999988079071,
     "avg_power": null,
-    "mechanical_stress": 25.6
+    "mechanical_stress": 25.5
   },
   {
     "activityId": 22408437243,
@@ -829,7 +829,7 @@
     "training_effect_aerobic": 2.700000047683716,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 66.6
+    "mechanical_stress": 66.5
   },
   {
     "activityId": 22397272275,
@@ -849,7 +849,7 @@
     "training_effect_aerobic": 2.200000047683716,
     "training_effect_anaerobic": 0.30000001192092896,
     "avg_power": null,
-    "mechanical_stress": 74.5
+    "mechanical_stress": 74.4
   },
   {
     "activityId": 22385993057,
@@ -921,7 +921,7 @@
     "training_effect_aerobic": 4.099999904632568,
     "training_effect_anaerobic": 1.399999976158142,
     "avg_power": 340.0,
-    "mechanical_stress": 83.8
+    "mechanical_stress": 83.6
   },
   {
     "activityId": 22341919293,
@@ -941,7 +941,7 @@
     "training_effect_aerobic": 1.7999999523162842,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 73.1
+    "mechanical_stress": 73.2
   },
   {
     "date": "2026-03-28",
@@ -993,7 +993,7 @@
     "training_effect_aerobic": 2.299999952316284,
     "training_effect_anaerobic": 0.10000000149011612,
     "avg_power": null,
-    "mechanical_stress": 75.7
+    "mechanical_stress": 75.6
   },
   {
     "date": "2026-03-26",
@@ -1045,7 +1045,7 @@
     "training_effect_aerobic": 2.700000047683716,
     "training_effect_anaerobic": 2.200000047683716,
     "avg_power": null,
-    "mechanical_stress": 68.0
+    "mechanical_stress": 68.1
   },
   {
     "date": "2026-03-24",
@@ -1173,7 +1173,7 @@
     "training_effect_aerobic": 3.5999999046325684,
     "training_effect_anaerobic": 2.200000047683716,
     "avg_power": 277.0,
-    "mechanical_stress": 61.8
+    "mechanical_stress": 62.0
   },
   {
     "activityId": 22194365916,
@@ -1245,7 +1245,7 @@
     "training_effect_aerobic": 2.4000000953674316,
     "training_effect_anaerobic": 0.0,
     "avg_power": null,
-    "mechanical_stress": 48.7
+    "mechanical_stress": 48.6
   },
   {
     "activityId": 22151452795,
@@ -1317,7 +1317,7 @@
     "training_effect_aerobic": 3.5,
     "training_effect_anaerobic": 0.0,
     "avg_power": 281.0,
-    "mechanical_stress": 82.1
+    "mechanical_stress": 81.8
   },
   {
     "activityId": 22102143715,
@@ -1369,7 +1369,7 @@
     "training_effect_aerobic": 3.5,
     "training_effect_anaerobic": 0.0,
     "avg_power": 291.0,
-    "mechanical_stress": 80.2
+    "mechanical_stress": 80.4
   },
   {
     "date": "2026-03-05",
@@ -1433,7 +1433,7 @@
     "training_effect_aerobic": 4.099999904632568,
     "training_effect_anaerobic": 2.4000000953674316,
     "avg_power": 359.0,
-    "mechanical_stress": 69.9
+    "mechanical_stress": 69.6
   },
   {
     "activityId": 22027529392,
@@ -1485,7 +1485,7 @@
     "training_effect_aerobic": 3.9000000953674316,
     "training_effect_anaerobic": 0.0,
     "avg_power": 291.0,
-    "mechanical_stress": 94.5
+    "mechanical_stress": 94.4
   },
   {
     "date": "2026-02-26",
@@ -1517,7 +1517,7 @@
     "training_effect_aerobic": 4.0,
     "training_effect_anaerobic": 2.200000047683716,
     "avg_power": 300.0,
-    "mechanical_stress": 65.7
+    "mechanical_stress": 65.6
   },
   {
     "activityId": 21985156540,
@@ -1569,7 +1569,7 @@
     "training_effect_aerobic": 3.5,
     "training_effect_anaerobic": 0.0,
     "avg_power": 289.0,
-    "mechanical_stress": 65.8
+    "mechanical_stress": 66.1
   },
   {
     "activityId": 21964008696,
@@ -1621,7 +1621,7 @@
     "training_effect_aerobic": 4.599999904632568,
     "training_effect_anaerobic": 0.0,
     "avg_power": 305.0,
-    "mechanical_stress": 80.2
+    "mechanical_stress": 80.6
   },
   {
     "date": "2026-02-20",
@@ -1653,7 +1653,7 @@
     "training_effect_aerobic": 3.5,
     "training_effect_anaerobic": 0.0,
     "avg_power": 279.0,
-    "mechanical_stress": 66.1
+    "mechanical_stress": 65.9
   },
   {
     "activityId": 21894236107,
