@@ -608,25 +608,25 @@
   },
   "2026-02-16": {
     "total": 38.2,
-    "weekly_mechanical_stress": 359.7,
+    "weekly_mechanical_stress": 359.9,
     "running": 38.2
   },
   "2026-02-23": {
     "total": 146.2,
-    "weekly_mechanical_stress": 605.5,
+    "weekly_mechanical_stress": 605.6,
     "cycling": 99.8,
     "running": 46.4,
     "strength": 0.0
   },
   "2026-03-02": {
     "total": 52.7,
-    "weekly_mechanical_stress": 423.6,
+    "weekly_mechanical_stress": 423.5,
     "cycling": 7.5,
     "running": 45.2
   },
   "2026-03-09": {
     "total": 63.5,
-    "weekly_mechanical_stress": 437.6,
+    "weekly_mechanical_stress": 437.2,
     "running": 37.8,
     "walking": 2.9,
     "cycling": 22.8,
@@ -634,67 +634,67 @@
   },
   "2026-03-16": {
     "total": 75.8,
-    "weekly_mechanical_stress": 452.4,
+    "weekly_mechanical_stress": 452.6,
     "running": 42.8,
     "cycling": 33.0
   },
   "2026-03-23": {
     "total": 71.6,
-    "weekly_mechanical_stress": 719.0,
+    "weekly_mechanical_stress": 719.1,
     "walking": 14.0,
     "running": 57.6
   },
   "2026-03-30": {
     "total": 73.0,
-    "weekly_mechanical_stress": 467.9,
+    "weekly_mechanical_stress": 467.4,
     "walking": 15.5,
     "cycling": 41.5,
     "running": 16.0
   },
   "2026-04-06": {
     "total": 120.1,
-    "weekly_mechanical_stress": 628.7,
+    "weekly_mechanical_stress": 629.2,
     "running": 38.8,
     "walking": 12.8,
     "cycling": 68.5
   },
   "2026-04-13": {
     "total": 113.8,
-    "weekly_mechanical_stress": 606.4,
+    "weekly_mechanical_stress": 607.0,
     "running": 52.0,
     "walking": 5.9,
     "cycling": 55.9
   },
   "2026-04-20": {
     "total": 137.9,
-    "weekly_mechanical_stress": 611.9,
+    "weekly_mechanical_stress": 612.2,
     "walking": 10.2,
     "cycling": 91.1,
     "running": 36.6
   },
   "2026-04-27": {
     "total": 55.3,
-    "weekly_mechanical_stress": 310.8,
+    "weekly_mechanical_stress": 311.3,
     "walking": 11.3,
     "running": 10.8,
     "cycling": 33.2
   },
   "2026-05-04": {
     "total": 143.6,
-    "weekly_mechanical_stress": 531.8,
+    "weekly_mechanical_stress": 531.6,
     "running": 34.2,
     "cycling": 109.4
   },
   "2026-05-11": {
     "total": 86.3,
-    "weekly_mechanical_stress": 504.9,
+    "weekly_mechanical_stress": 505.0,
     "cycling": 49.2,
     "walking": 16.1,
     "running": 21.0
   },
   "2026-05-18": {
     "total": 54.5,
-    "weekly_mechanical_stress": 177.9,
+    "weekly_mechanical_stress": 177.8,
     "walking": 5.7,
     "cycling": 48.8
   }
