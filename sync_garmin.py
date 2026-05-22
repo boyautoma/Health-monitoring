@@ -535,7 +535,25 @@ def main():
             estimated_vdot = round(best_vdot, 1)
             print(f"  VDOT (best pace): {estimated_vdot} ({best_vdot_src})")
 
-    effective_vo2 = vo2max_today or estimated_vo2max or estimated_vdot
+    # Use validated values from config as floor (interval analysis > overall pace)
+    validated_vo2 = ATHLETE_PROFILE.get("validated_vo2max")
+    validated_vdot = ATHLETE_PROFILE.get("validated_vdot")
+    validated_source = ATHLETE_PROFILE.get("vo2max_source")
+
+    # Pick best estimate, but never go below validated floor
+    best_estimated = max(filter(None, [estimated_vo2max, estimated_vdot]), default=None)
+    effective_vo2 = vo2max_today or best_estimated or validated_vo2
+
+    if effective_vo2 and validated_vo2 and effective_vo2 <= validated_vo2:
+        effective_vo2 = validated_vo2
+        vdot_source = validated_source
+        print(f"  Using validated VO2max floor: {validated_vo2}")
+
+    # VDOT: prefer validated if estimated is lower
+    final_vdot = estimated_vdot or validated_vdot
+    if final_vdot and validated_vdot and final_vdot < validated_vdot:
+        final_vdot = validated_vdot
+
     vma = round(effective_vo2 / 3.5, 2) if effective_vo2 else None
 
     # =====================================================================
@@ -549,7 +567,7 @@ def main():
         "profile": {
             "vo2max": effective_vo2,
             "vma": vma,
-            "vdot": estimated_vdot or vo2max_today,
+            "vdot": final_vdot or vo2max_today,
             "vdot_source": vdot_source,
             "fc_max": ATHLETE_PROFILE["fc_max"],
             "fc_repos": ATHLETE_PROFILE["fc_repos_baseline"],

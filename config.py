@@ -22,6 +22,12 @@ ATHLETE_PROFILE = {
     "max_volume_increase_pct": 10,  # Max +10%/semaine
     "recovery_week_interval": 3,  # Semaine de récup toutes les 3 semaines
     "recovery_week_reduction_pct": 25,
+    # VO2max/VDOT validés par analyse des splits d'intervalles (mai 2026)
+    # Source: 1000m @ 4:09/km FC 182 (15 mai), HR-method p75=47
+    "validated_vo2max": 47,
+    "validated_vdot": 47,
+    "validated_vma": 13.4,
+    "vo2max_source": "Intervals analysis: 1000m @ 4:09/km FC 182 (15 mai), HR-method p75=47",
 }
 
 # Zones FC (Karvonen) - FC max 198, FC repos 53

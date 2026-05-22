@@ -1,9 +1,9 @@
 {
-  "last_sync": "2026-05-20T10:57:46.329971",
-  "date": "2026-05-20",
+  "last_sync": "2026-05-22T09:50:35.151057",
+  "date": "2026-05-22",
   "profile": {
     "vo2max": 47,
-    "vma": 13.4,
+    "vma": 13.43,
     "vdot": 47,
     "vdot_source": "Intervals analysis: 1000m @ 4:09/km FC 182 (15 mai), HR-method p75=47",
     "fc_max": 198,
@@ -12,18 +12,18 @@
     "hrv_alert_threshold": 49
   },
   "recovery": {
-    "score": 87,
-    "level": "excellent",
+    "score": 64,
+    "level": "moderate",
     "hrv_last_night": null,
-    "hrv_7day_avg": 72,
+    "hrv_7day_avg": 68,
     "hrv_status": "BALANCED",
-    "rhr": 50,
-    "sleep_score": 80,
-    "sleep_duration_min": 431,
-    "deep_sleep_min": 55,
-    "light_sleep_min": 320,
-    "rem_sleep_min": 56,
-    "awake_min": 3,
+    "rhr": null,
+    "sleep_score": null,
+    "sleep_duration_min": 0,
+    "deep_sleep_min": 0,
+    "light_sleep_min": 0,
+    "rem_sleep_min": 0,
+    "awake_min": 0,
     "stress_avg": null,
     "training_readiness": null
   }
