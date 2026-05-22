@@ -1,10 +1,10 @@
 [
   {
     "date": "2026-05-22",
-    "recovery_score": 67,
+    "recovery_score": 69,
     "hrv_7day_avg": 68,
     "hrv_last_night": null,
-    "rhr": 55,
+    "rhr": 54,
     "sleep_score": null,
     "sleep_duration_min": 0,
     "deep_sleep_min": 0,
