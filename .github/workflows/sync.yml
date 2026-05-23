@@ -1,11 +1,12 @@
 name: Sync Garmin Data
 
 on:
-  schedule:
-    # 10h Paris (CEST UTC+2) = 08h UTC
-    - cron: '0 8 * * *'
-    # 21h Paris (CEST UTC+2) = 19h UTC
-    - cron: '0 19 * * *'
+  # Cron disabled — sync runs from local machine via Windows Task Scheduler
+  # (Garmin rate-limits GitHub Actions shared IPs too aggressively)
+  # Keep workflow_dispatch as manual fallback when local machine is off
+  # schedule:
+  #   - cron: '0 8 * * *'   # 10h Paris
+  #   - cron: '0 19 * * *'  # 21h Paris
   workflow_dispatch:
 
 jobs:
