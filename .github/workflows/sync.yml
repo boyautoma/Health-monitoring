@@ -21,7 +21,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Restore Garmin tokens from secrets
+      # 1. Try to restore tokens from cache (refreshed by previous runs)
+      - name: Restore cached tokens
+        id: cache-tokens
+        uses: actions/cache/restore@v4
+        with:
+          path: .garmin_tokens
+          key: garmin-tokens-dummy
+          restore-keys: garmin-tokens-
+
+      # 2. Fallback: restore from secrets if no cache hit
+      - name: Restore tokens from secrets (fallback)
+        if: steps.cache-tokens.outputs.cache-hit != 'true'
         env:
           GARMIN_OAUTH1: ${{ secrets.GARMIN_OAUTH1_TOKEN }}
           GARMIN_OAUTH2: ${{ secrets.GARMIN_OAUTH2_TOKEN }}
@@ -29,26 +40,36 @@ jobs:
           mkdir -p .garmin_tokens
           echo "$GARMIN_OAUTH1" | base64 -d > .garmin_tokens/oauth1_token.json
           echo "$GARMIN_OAUTH2" | base64 -d > .garmin_tokens/oauth2_token.json
-          echo "Tokens restored ($(wc -c < .garmin_tokens/oauth1_token.json)b + $(wc -c < .garmin_tokens/oauth2_token.json)b)"
+          echo "Tokens restored from secrets ($(wc -c < .garmin_tokens/oauth1_token.json)b + $(wc -c < .garmin_tokens/oauth2_token.json)b)"
+
+      - name: Verify tokens exist
+        run: |
+          if [ ! -f .garmin_tokens/oauth1_token.json ] || [ ! -f .garmin_tokens/oauth2_token.json ]; then
+            echo "ERROR: No tokens available"
+            exit 1
+          fi
+          echo "Tokens ready ($(wc -c < .garmin_tokens/oauth1_token.json)b + $(wc -c < .garmin_tokens/oauth2_token.json)b)"
 
       - name: Install dependencies
         run: pip install garminconnect==0.2.38 garth
 
       - name: Sync Garmin data
+        id: sync
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
         run: python sync_garmin.py
 
-      - name: Upload refreshed tokens as artifact
-        if: always()
-        uses: actions/upload-artifact@v4
+      # 3. Cache refreshed tokens for next run (new key each time = always fresh)
+      - name: Cache refreshed tokens
+        if: success()
+        uses: actions/cache/save@v4
         with:
-          name: garmin-tokens
-          path: .garmin_tokens/
-          retention-days: 1
+          path: .garmin_tokens
+          key: garmin-tokens-${{ github.run_id }}
 
       - name: Commit and push
+        if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

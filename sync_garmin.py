@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 
 import garth
 from garminconnect import Garmin
+from requests.exceptions import RetryError
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import ATHLETE_PROFILE
@@ -41,6 +42,16 @@ def _save_tokens(client):
         print(f"  Could not save tokens: {e}")
 
 
+def _is_rate_limited(exc):
+    """Check if an exception is a Garmin 429 rate-limit error."""
+    msg = str(exc).lower()
+    return "429" in msg or "too many" in msg or "rate" in msg
+
+
+# Exit code 75 = EX_TEMPFAIL (temporary failure, retry later)
+EXIT_RATE_LIMITED = 75
+
+
 def connect():
     os.makedirs(TOKEN_DIR, exist_ok=True)
 
@@ -59,6 +70,10 @@ def connect():
             print(f"Resumed session via garth.resume (user: {garth.client.profile.get('fullName', client.display_name)})")
             return client
         except Exception as e:
+            if _is_rate_limited(e):
+                print(f"  RATE LIMITED by Garmin (429). Exiting immediately.")
+                print(f"  DO NOT retry — each attempt extends the ban.")
+                sys.exit(EXIT_RATE_LIMITED)
             print(f"  garth.resume failed: {e}")
             print("  Falling back to password login...")
 
@@ -66,31 +81,41 @@ def connect():
         print("ERROR: No cached tokens and GARMIN_EMAIL/GARMIN_PASSWORD not set")
         sys.exit(1)
 
-    for attempt in range(3):
-        try:
-            print(f"Password login attempt {attempt + 1}/3...")
-            client = Garmin(email, password)
-            client.login()
-            _save_tokens(client)
-            print("Logged in successfully")
-            return client
-        except Exception as e:
-            wait = 60 * (attempt + 1)
-            print(f"  Failed: {e}")
-            if attempt < 2:
-                print(f"  Retrying in {wait}s...")
-                time.sleep(wait)
-
-    print("ERROR: All login attempts failed")
-    sys.exit(1)
+    # Single login attempt only — retries on 429 make things worse
+    try:
+        print("Password login attempt...")
+        client = Garmin(email, password)
+        client.login()
+        _save_tokens(client)
+        print("Logged in successfully")
+        return client
+    except Exception as e:
+        if _is_rate_limited(e):
+            print(f"  RATE LIMITED by Garmin (429). Exiting immediately.")
+            print(f"  DO NOT retry — each attempt extends the ban.")
+            sys.exit(EXIT_RATE_LIMITED)
+        print(f"  Login failed: {e}")
+        sys.exit(1)
 
 
 def safe_call(func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        print(f"  Warning: {e}")
-        return None
+    """Call a Garmin API function with rate-limit protection."""
+    for attempt in range(2):
+        try:
+            result = func(*args, **kwargs)
+            time.sleep(0.5)  # Be gentle with Garmin's API
+            return result
+        except Exception as e:
+            if _is_rate_limited(e):
+                if attempt == 0:
+                    print(f"  Rate limited on {func.__name__}, waiting 30s...")
+                    time.sleep(30)
+                    continue
+                print(f"  RATE LIMITED by Garmin (429). Exiting to avoid ban extension.")
+                sys.exit(EXIT_RATE_LIMITED)
+            print(f"  Warning: {e}")
+            return None
+    return None
 
 
 def _ts_to_hhmm(ts_ms):
