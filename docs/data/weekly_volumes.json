@@ -698,5 +698,10 @@
     "running": 5.4,
     "cycling": 209.8,
     "walking": 5.7
+  },
+  "2026-05-25": {
+    "total": 41.8,
+    "weekly_mechanical_stress": 100.0,
+    "cycling": 41.8
   }
 }
