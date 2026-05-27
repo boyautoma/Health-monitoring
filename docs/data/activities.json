@@ -1,5 +1,25 @@
 [
   {
+    "activityId": 23035670031,
+    "date": "2026-05-27",
+    "name": "Saint-Affrique Marche à pied",
+    "type": "walking",
+    "type_raw": "walking",
+    "distance_km": 5.3,
+    "duration_min": 54,
+    "avg_pace": "10:07",
+    "avg_speed_kmh": 5.9,
+    "avg_hr": 132.0,
+    "max_hr": 180.0,
+    "calories": 423.0,
+    "elevation_gain": 280.0,
+    "elevation_loss": 278.0,
+    "training_effect_aerobic": 2.5,
+    "training_effect_anaerobic": 0.10000000149011612,
+    "avg_power": null,
+    "mechanical_stress": 72.0
+  },
+  {
     "activityId": 23007923111,
     "date": "2026-05-25",
     "name": "Saint-Affrique Cyclisme sur route",
