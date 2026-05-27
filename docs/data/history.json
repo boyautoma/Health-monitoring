@@ -1,5 +1,23 @@
 [
   {
+    "date": "2026-05-27",
+    "recovery_score": 83,
+    "hrv_7day_avg": 68,
+    "hrv_last_night": null,
+    "rhr": 46,
+    "sleep_score": 64,
+    "sleep_duration_min": 321,
+    "deep_sleep_min": 106,
+    "light_sleep_min": 178,
+    "rem_sleep_min": 37,
+    "awake_min": 45,
+    "bedtime": "04:01",
+    "wake_time": "10:07",
+    "stress_avg": null,
+    "training_readiness": null,
+    "vo2max": null
+  },
+  {
     "date": "2026-05-26",
     "recovery_score": 87,
     "hrv_7day_avg": 67,
