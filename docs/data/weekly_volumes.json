@@ -704,5 +704,10 @@
     "weekly_mechanical_stress": 416.6,
     "cycling": 185.4,
     "walking": 5.3
+  },
+  "2026-06-01": {
+    "total": 55.4,
+    "weekly_mechanical_stress": 100.0,
+    "cycling": 55.4
   }
 }
