@@ -1,5 +1,25 @@
 [
   {
+    "activityId": 23143412953,
+    "date": "2026-06-05",
+    "name": "Saint-Affrique Cyclisme sur route",
+    "type": "cycling",
+    "type_raw": "road_biking",
+    "distance_km": 60.3,
+    "duration_min": 133,
+    "avg_pace": null,
+    "avg_speed_kmh": 27.3,
+    "avg_hr": 156.0,
+    "max_hr": 177.0,
+    "calories": 1495.0,
+    "elevation_gain": 822.0,
+    "elevation_loss": 804.0,
+    "training_effect_aerobic": 5.0,
+    "training_effect_anaerobic": 2.0,
+    "avg_power": null,
+    "mechanical_stress": 100.0
+  },
+  {
     "activityId": 23119107040,
     "date": "2026-06-03",
     "name": "Saint-Affrique Cyclisme sur route",
