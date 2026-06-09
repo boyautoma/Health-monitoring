@@ -107,10 +107,33 @@ function renderHeader(c) {
     document.getElementById('syncTime').textContent = time;
 }
 
+// Garmin Training Readiness feedback codes -> French
+const READINESS_FEEDBACK = {
+    BOOSTED_BY_GOOD_SLEEP: 'Boosté par un bon sommeil',
+    TIME_TO_SLOW_DOWN: 'Lève le pied',
+    POOR_HRV_UNBALANCED: 'HRV déséquilibrée',
+    GOOD_HRV: 'Bonne HRV',
+    HIGH_RECOVERY_TIME: 'Récup encore en cours',
+    FULLY_RECOVERED: 'Pleinement récupéré',
+    READY_TO_TRAIN: 'Prêt à t\'entraîner',
+};
+
+function readinessDisplay(score) {
+    // Garmin Training Readiness color/label by score band
+    if (score == null)  return { text: 'Readiness indispo', color: '#555' };
+    if (score >= 75)    return { text: 'Prêt — fais ta séance', color: COLORS.green };
+    if (score >= 50)    return { text: 'Modéré — séance ok, gère', color: COLORS.gold };
+    if (score >= 25)    return { text: 'Fatigué — easy seulement', color: COLORS.orange };
+    return { text: 'Repos recommandé', color: COLORS.red };
+}
+
 function renderRecovery(c) {
     const rec = c.recovery || {};
-    const score = rec.score;
-    const level = LEVELS[rec.level] || LEVELS.unknown;
+    // Garmin's own Training Readiness is the headline; fall back to custom score
+    const garmin = rec.garmin_readiness;
+    const useGarmin = garmin != null;
+    const score = useGarmin ? garmin : rec.score;
+    const level = useGarmin ? readinessDisplay(garmin) : (LEVELS[rec.level] || LEVELS.unknown);
 
     // Date
     const d = new Date(c.date);
@@ -124,7 +147,12 @@ function renderRecovery(c) {
     arc.style.stroke = level.color;
 
     document.getElementById('heroValue').textContent = score != null ? score : '--';
-    document.getElementById('heroStatus').textContent = level.text;
+    // Prefer Garmin's own feedback phrase if present
+    let statusText = level.text;
+    if (useGarmin && rec.readiness_feedback && READINESS_FEEDBACK[rec.readiness_feedback]) {
+        statusText = READINESS_FEEDBACK[rec.readiness_feedback];
+    }
+    document.getElementById('heroStatus').textContent = statusText;
     document.getElementById('heroStatus').style.color = level.color;
 
     // Metric cards
@@ -142,8 +170,8 @@ function renderRecovery(c) {
         document.getElementById('sleepSub').textContent = `${h}h${String(m).padStart(2, '0')}`;
     }
 
-    // Stats row
-    setText('readinessVal', rec.training_readiness);
+    // Stats row — show recovery time remaining (Garmin) instead of duplicate readiness
+    setText('readinessVal', rec.recovery_time_h != null ? rec.recovery_time_h + 'h' : '--');
     setText('vo2Val', c.profile?.vo2max != null ? Math.round(c.profile.vo2max) : '--');
     const vma = c.profile?.vo2max != null ? (c.profile.vo2max / 3.5).toFixed(1) : '--';
     setText('vmaVal', vma);
