@@ -18,8 +18,8 @@ ATHLETE_PROFILE = {
     "fc_repos_baseline": 53,
     "lthr_run": 178,          # FC seuil course (efforts soutenus 175-181)
     "lthr_bike": 173,         # FC seuil vélo (efforts soutenus 169-176)
-    "hrv_baseline": 51,
-    "hrv_alert_threshold": 49,
+    "hrv_baseline": 68,          # milieu plage équilibrée Garmin (59-77), maj juin 2026
+    "hrv_alert_threshold": 59,   # bas de la plage équilibrée Garmin (sous = UNBALANCED)
     "fc_footing_max": 155,  # Plafond strict Z2 (contrainte périostites)
     "max_volume_increase_pct": 10,  # Max +10%/semaine
     "recovery_week_interval": 3,  # Semaine de récup toutes les 3 semaines
