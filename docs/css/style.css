@@ -1072,6 +1072,21 @@ main {
 .badge.unlocked .badge-state { color: var(--green); }
 .badge.locked .badge-state { color: var(--text-3); }
 
+/* Phase / cycle card */
+.phase-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; }
+.phase-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.phase-now { font-size: 18px; font-weight: 800; }
+.phase-sub { font-size: 12px; font-weight: 700; color: var(--green); }
+.phase-emphasis { font-size: 13px; color: var(--text-2); line-height: 1.45; margin-bottom: 14px; }
+.phase-emphasis b { color: var(--text); }
+.phase-timeline { display: flex; align-items: center; gap: 2px; overflow-x: auto; }
+.phase-step { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 9px; min-width: 52px; opacity: 0.4; }
+.phase-step.active { opacity: 1; background: var(--green-dim); }
+.phase-step-icon { font-size: 17px; }
+.phase-step-name { font-size: 10px; font-weight: 700; color: var(--text-2); }
+.phase-step.active .phase-step-name { color: var(--green); }
+.phase-arrow { color: var(--text-3); font-size: 13px; flex-shrink: 0; }
+
 /* 2 rules + flexible cadre */
 .rule-note { font-size: 12px; color: var(--gold); line-height: 1.45; margin-top: 4px; padding: 10px 12px; background: rgba(255,215,0,0.06); border-radius: 10px; }
 .rule-note b { color: var(--text); }

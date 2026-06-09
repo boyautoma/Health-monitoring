@@ -715,9 +715,42 @@ const SESS_TYPE = {
     opener:   { c: '#4ea8de', l: 'Réveil' },
 };
 
+// Mentor's block cycle: Endurance → Punchy → Force → Repos
+const CYCLE_START = '2026-06-15';  // lundi — début du bloc Endurance (après reprise douce)
+const PHASES = [
+    { key: 'endurance', name: 'Endurance', icon: '🌱', weeks: 3, emphasis: 'Long & facile — bâtir la base aérobie.' },
+    { key: 'punchy', name: 'Punchy', icon: '⚡', weeks: 3, emphasis: 'Efforts courts et violents en côte/virage, + repos sur le reste.' },
+    { key: 'force', name: 'Force', icon: '💪', weeks: 3, emphasis: 'Gros braquet (en intervalles, on monte progressivement — protège les mollets).' },
+    { key: 'repos', name: 'Repos', icon: '🛌', weeks: 2, emphasis: '1-2 sorties cool sur 2 semaines. C\'est là que tu te transformes.' },
+];
+
+function renderPhaseCard() {
+    const el = document.getElementById('phaseCard');
+    if (!el) return;
+    const start = new Date(CYCLE_START + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.floor((today - start) / 86400000);
+    let curKey = 'reprise', curName = 'Reprise douce', icon = '🌿', sub = '', emphasis = 'Easy, et chouchoute les mollets (un peu tendus → on temporise). Pas de gros braquet.';
+    if (days >= 0) {
+        const w = Math.floor(days / 7);
+        let acc = 0, found = null;
+        for (const p of PHASES) { if (w < acc + p.weeks) { found = { p, wk: w - acc + 1 }; break; } acc += p.weeks; }
+        if (found) { curKey = found.p.key; curName = found.p.name; icon = found.p.icon; emphasis = found.p.emphasis; sub = `Semaine ${found.wk}/${found.p.weeks}`; }
+        else { curKey = 'done'; curName = 'Cycle bouclé'; icon = '🏁'; emphasis = 'Bravo — on refait un point pour la suite.'; }
+    } else {
+        sub = `Endurance dans ${-days} j`;
+    }
+    const steps = [{ key: 'reprise', name: 'Reprise', icon: '🌿' }, ...PHASES.map(p => ({ key: p.key, name: p.name, icon: p.icon }))];
+    const tl = steps.map(t => `<div class="phase-step ${t.key === curKey ? 'active' : ''}"><span class="phase-step-icon">${t.icon}</span><span class="phase-step-name">${t.name}</span></div>`).join('<span class="phase-arrow">›</span>');
+    el.innerHTML = `<div class="phase-head"><span class="phase-now">${icon} ${curName}</span><span class="phase-sub">${sub}</span></div>
+        <div class="phase-emphasis">Emphase : <b>${emphasis}</b></div>
+        <div class="phase-timeline">${tl}</div>`;
+}
+
 function renderDefis() {
     const c = cyclingActs();
     document.getElementById('xpBadge').textContent = '⚡ ' + totalXP().toLocaleString('fr-FR') + ' XP';
+    renderPhaseCard();
     renderProgCard();
     renderPowerCard(c);
     renderBossList(c);
