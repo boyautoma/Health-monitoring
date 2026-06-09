@@ -1051,6 +1051,17 @@ main {
 .badge.unlocked .badge-state { color: var(--green); }
 .badge.locked .badge-state { color: var(--text-3); }
 
+/* 2 rules + flexible cadre */
+.rules-card { margin-bottom: 12px; }
+.rules-title { font-size: 13px; font-weight: 800; margin-bottom: 8px; }
+.rule { display: flex; gap: 10px; font-size: 13px; color: var(--text-2); line-height: 1.45; margin-bottom: 8px; }
+.rule:last-child { margin-bottom: 0; }
+.rule b { color: var(--text); }
+.rule-num { flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px; background: var(--green-dim); color: var(--green); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.cadre-targets { font-size: 13px; color: var(--text-2); line-height: 1.5; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.cadre-targets b { color: var(--text); }
+.sess-menu-icon { font-size: 18px; width: 30px; flex-shrink: 0; text-align: center; padding-top: 1px; }
+
 /* Program week sessions */
 .prog-week { display: flex; flex-direction: column; gap: 8px; }
 .sess-row { display: flex; gap: 12px; background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: 12px; padding: 12px 14px; }

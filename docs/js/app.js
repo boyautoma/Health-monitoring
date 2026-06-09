@@ -671,6 +671,7 @@ const SESS_TYPE = {
     easy:     { c: '#00d4aa', l: 'Easy' },
     long:     { c: '#00f19f', l: 'Longue' },
     torque:   { c: '#ff8c42', l: 'Force' },
+    climb:    { c: '#ff8c42', l: 'Côtes' },
     tempo:    { c: '#ffd700', l: 'Tempo' },
     threshold:{ c: '#ff8c42', l: 'Seuil' },
     vo2:      { c: '#ff4655', l: 'VO2' },
@@ -691,35 +692,22 @@ function renderDefis() {
 function renderProgCard() {
     const el = document.getElementById('progCard');
     if (!el) return;
-    const prog = buildProgram();
-    const st = programState();
-    const thisWeekKey = weekKeyOf(new Date().toISOString().slice(0, 10));
-    const wxp = weekXP(thisWeekKey);
-    if (!st.started) {
-        el.innerHTML = `<div class="prog-head"><span class="prog-block">🚦 Départ lundi 15 juin</span><span class="prog-week-tag">J-${st.daysToStart}</span></div>
-            <div class="prog-theme">11 semaines · 3 blocs de charge + 2 de repos · cap : tenir 200 W plus longtemps</div>
-            <div class="prog-today neutral"><span class="prog-today-lbl">Première séance</span><span class="prog-today-title">Force-vélocité 4×5 min — gros braquet, FC 150-160</span></div>`;
-        return;
-    }
-    const wk = prog[st.weekIdx];
-    const todayStr = ymd(st.today);
-    const todaySess = wk.sessions.find(s => sessionDateStr(st.weekIdx, s.dow) === todayStr);
-    const pct = Math.round((st.weekIdx + 1) / prog.length * 100);
-    let todayHtml;
-    if (todaySess) {
-        const t = SESS_TYPE[todaySess.type] || { c: '#999' };
-        const done = cyclingActs().some(a => a.date === todayStr);
-        todayHtml = `<div class="prog-today" style="border-left-color:${t.c}">
-            <span class="prog-today-lbl">${done ? '✅ Séance du jour — faite' : '🎯 Séance du jour'}</span>
-            <span class="prog-today-title">${todaySess.title} · ${fmtMin(todaySess.dur)} · FC ${todaySess.hr}</span>
-            <span class="prog-today-desc">${todaySess.desc}</span></div>`;
-    } else {
-        todayHtml = `<div class="prog-today neutral"><span class="prog-today-lbl">Aujourd'hui</span><span class="prog-today-title">Repos ou récup active 🛌</span></div>`;
-    }
-    el.innerHTML = `<div class="prog-head"><span class="prog-block">${wk.block}</span><span class="prog-week-tag">Sem. ${st.weekIdx + 1}/11 · ${wxp} XP</span></div>
-        <div class="prog-theme">${wk.theme}</div>
-        <div class="prog-progress"><div class="prog-progress-fill" style="width:${pct}%"></div></div>
-        ${todayHtml}`;
+    const rec = (DATA.current || {}).recovery || {};
+    const r = rec.garmin_readiness;
+    // Daily suggestion driven by readiness — a nudge, never an order
+    let icon, title, msg, cls;
+    if (r == null) { icon = '🚴'; title = 'Roule au feeling'; msg = 'Pas de readiness aujourd\'hui — fie-toi à tes jambes.'; cls = 'neutral'; }
+    else if (r >= 65) { icon = '🟢'; title = 'Jambes fraîches'; msg = 'Si l\'envie est là, c\'est le bon jour pour pousser dans les côtes. Sinon, roule cool — ça compte aussi.'; cls = 'good'; }
+    else if (r >= 40) { icon = '🟡'; title = 'Forme moyenne'; msg = 'Sortie facile : sur les bosses, assis, petit braquet, tu respires. Pas d\'intensité aujourd\'hui.'; cls = 'warn'; }
+    else { icon = '🟠'; title = 'Fatigué'; msg = 'Repos, ou petit tour tranquille pour dérouiller. Aucune pression — écourter, c\'est intelligent.'; cls = 'warn'; }
+    el.innerHTML = `
+        <div class="rules-card">
+            <div class="rules-title">🧠 Tes 2 règles</div>
+            <div class="rule"><span class="rule-num">1</span><span>La plupart du temps : <b>facile</b>, tu peux papoter. Sur tes côtes la FC monte (160+), c'est <b>normal</b> — reste assis, petit braquet, sans forcer. Juge à l'effort, pas au cardio.</span></div>
+            <div class="rule"><span class="rule-num">2</span><span><b>1-2×/sem : tu pousses</b>, et seulement si frais. Jambes flagada au carrefour ? Tu écourtes. Zéro culpabilité.</span></div>
+        </div>
+        <div class="prog-today ${cls}"><span class="prog-today-lbl">${icon} Suggestion du jour</span>
+            <span class="prog-today-title">${title}</span><span class="prog-today-desc">${msg}</span></div>`;
 }
 
 function renderPowerCard(c) {
@@ -769,21 +757,26 @@ function renderBadgeGrid(c) {
 function renderProgWeek() {
     const el = document.getElementById('progWeek');
     if (!el) return;
-    const prog = buildProgram();
-    const st = programState();
-    const idx = st.started ? st.weekIdx : 0;
-    const wk = prog[idx];
-    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-    el.innerHTML = wk.sessions.map(s => {
-        const t = SESS_TYPE[s.type] || { c: '#999', l: s.type };
-        const dStr = sessionDateStr(idx, s.dow);
-        const done = st.started && cyclingActs().some(a => a.date === dStr);
-        return `<div class="sess-row" style="border-left-color:${t.c}">
-            <div class="sess-day">${days[s.dow]}</div>
-            <div class="sess-main"><span class="sess-title">${s.title}${done ? ' ✅' : ''}</span>
-                <span class="sess-meta"><span class="sess-tag" style="background:${t.c}22;color:${t.c}">${t.l}</span> ${fmtMin(s.dur)} · FC ${s.hr}</span>
-                <span class="sess-desc">${s.desc}</span></div></div>`;
-    }).join('');
+    // A menu of session "ideas" to pick by feel — terrain-aware (côtes partout)
+    const menu = [
+        { type: 'easy', icon: '🟢', effort: 'Tu peux parler',
+          title: 'Sortie facile', desc: 'À l\'aise. Sur les bosses : assis, petit braquet, sans pousser (la FC montera à 155-162, c\'est ok). Récupère dans les descentes — mouline ou laisse rouler, peu importe.' },
+        { type: 'long', icon: '🟢', effort: 'Facile, longtemps',
+          title: 'Sortie longue', desc: '2 à 4h tranquille. Mange/bois toutes les 20 min. C\'est ça qui te fera tenir 200 W plus longtemps (la durabilité).' },
+        { type: 'climb', icon: '🟠', effort: 'Dur sur les montées',
+          title: 'Séance côtes — si frais', desc: 'Tes côtes = ta salle de muscu intégrée. 4-6 montées de ~5 min en poussant fort, récup en redescendant. Pas besoin de chrono, le terrain fait le job.' },
+        { type: 'torque', icon: '🟠', effort: 'Jambes qui chargent',
+          title: 'Force-vélocité — si frais', desc: 'Sur une côte régulière : gros braquet, 50-60 rpm, assis. 4-5 × 5 min. C\'est exactement ce qui te manque pour rester plus easy en montée.' },
+    ];
+    el.innerHTML = `<div class="cadre-targets">Sur la semaine, vise : <b>3-4 sorties</b> · l'essentiel <b>en aisance</b> · <b>1 fois</b> où tu pousses (si la forme est là) · <b>1 longue</b> quand tu peux. Le reste, au feeling.</div>`
+        + menu.map(m => {
+            const c = (SESS_TYPE[m.type] || { c: '#999' }).c;
+            return `<div class="sess-row" style="border-left-color:${c}">
+                <div class="sess-menu-icon">${m.icon}</div>
+                <div class="sess-main"><span class="sess-title">${m.title}</span>
+                    <span class="sess-meta"><span class="sess-tag" style="background:${c}22;color:${c}">${m.effort}</span></span>
+                    <span class="sess-desc">${m.desc}</span></div></div>`;
+        }).join('');
 }
 
 // ════════════════════════════════════════════
