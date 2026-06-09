@@ -384,16 +384,20 @@ def main():
     history_map[date_str] = today_data
 
     # Determine which past dates need backfilling (up to BACKFILL_DAYS)
-    # Also upgrade existing entries missing bedtime/wake_time (max 14 per run)
+    # Also upgrade existing entries missing newer fields (max 14 per run).
+    # This gradually backfills history (readiness/stress/hrv_last_night) over
+    # several runs without hammering Garmin's API (avoids 429 rate-limit).
     upgrade_count = 0
     UPGRADE_MAX = 14
     for i in range(1, BACKFILL_DAYS + 1):
         d = today - timedelta(days=i)
         d_str = d.strftime("%Y-%m-%d")
         existing = history_map.get(d_str)
+        # "readiness_level" key is always set after an upgrade (even if value is
+        # None), so this self-limits — a day is re-fetched at most once.
         needs_upgrade = (
             existing
-            and existing.get("bedtime") is None
+            and "readiness_level" not in existing
             and upgrade_count < UPGRADE_MAX
         )
         if existing and not needs_upgrade:
