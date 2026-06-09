@@ -148,10 +148,14 @@ def fetch_hrv(client, date_str):
     if not data:
         return None
     summary = data.get("hrvSummary", {})
+    baseline = summary.get("baseline") or {}
     return {
         "weekly_avg": summary.get("weeklyAvg"),
-        "last_night": summary.get("lastNight"),
+        "last_night": summary.get("lastNightAvg"),  # correct key (was "lastNight" -> always None)
+        "last_night_high": summary.get("lastNight5MinHigh"),
         "status": summary.get("status"),
+        "baseline_low": baseline.get("balancedLow"),
+        "baseline_high": baseline.get("balancedUpper"),
     }
 
 
@@ -159,7 +163,9 @@ def fetch_stress(client, date_str):
     data = safe_call(client.get_all_day_stress, date_str)
     if not data:
         return None
-    return {"avg_stress": data.get("overallStressLevel")}
+    # Correct key is "avgStressLevel" (was "overallStressLevel" -> always None)
+    return {"avg_stress": data.get("avgStressLevel"),
+            "max_stress": data.get("maxStressLevel")}
 
 
 def fetch_rhr(client, date_str):
@@ -206,9 +212,19 @@ def fetch_vo2max(client, date_str):
 
 
 def fetch_training_readiness(client, date_str):
+    """Garmin's own Training Readiness. API returns a LIST (was read as dict -> None)."""
     data = safe_call(client.get_training_readiness, date_str)
+    if isinstance(data, list) and data:
+        data = data[0]
     if data and isinstance(data, dict):
-        return data.get("score") or data.get("trainingReadinessScore")
+        rt = data.get("recoveryTime")
+        return {
+            "score": data.get("score") or data.get("trainingReadinessScore"),
+            "level": data.get("level"),                  # e.g. "POOR", "GOOD", "PRIME"
+            "feedback": data.get("feedbackShort"),       # e.g. "TIME_TO_SLOW_DOWN"
+            "recovery_time_h": round(rt / 60, 1) if rt else None,
+            "acute_load": data.get("acuteLoad"),
+        }
     return None
 
 
@@ -227,7 +243,7 @@ def fetch_day(client, date_str):
         sleep_duration_min=sleep.get("duration_min") if sleep else None,
         rhr=rhr,
         stress_avg=stress.get("avg_stress") if stress else None,
-        training_readiness=tr,
+        training_readiness=tr.get("score") if tr else None,
     )
 
     return {
@@ -235,6 +251,9 @@ def fetch_day(client, date_str):
         "recovery_score": score,
         "hrv_7day_avg": hrv.get("weekly_avg") if hrv else None,
         "hrv_last_night": hrv.get("last_night") if hrv else None,
+        "hrv_status": hrv.get("status") if hrv else None,
+        "hrv_baseline_low": hrv.get("baseline_low") if hrv else None,
+        "hrv_baseline_high": hrv.get("baseline_high") if hrv else None,
         "rhr": rhr,
         "sleep_score": sleep.get("score") if sleep else None,
         "sleep_duration_min": sleep.get("duration_min") if sleep else None,
@@ -245,7 +264,11 @@ def fetch_day(client, date_str):
         "bedtime": sleep.get("bedtime") if sleep else None,
         "wake_time": sleep.get("wake_time") if sleep else None,
         "stress_avg": stress.get("avg_stress") if stress else None,
-        "training_readiness": tr,
+        # Garmin's own Training Readiness (the score shown on the watch)
+        "training_readiness": tr.get("score") if tr else None,
+        "readiness_level": tr.get("level") if tr else None,
+        "readiness_feedback": tr.get("feedback") if tr else None,
+        "recovery_time_h": tr.get("recovery_time_h") if tr else None,
         "vo2max": vo2max,
     }, sleep, hrv, stress, rhr
 
@@ -600,11 +623,19 @@ def main():
             "hrv_alert_threshold": ATHLETE_PROFILE["hrv_alert_threshold"],
         },
         "recovery": {
+            # Garmin's own Training Readiness = the headline number (what the watch shows)
+            "garmin_readiness": today_data.get("training_readiness"),
+            "readiness_level": today_data.get("readiness_level"),
+            "readiness_feedback": today_data.get("readiness_feedback"),
+            "recovery_time_h": today_data.get("recovery_time_h"),
+            # Custom composite score (secondary)
             "score": today_data["recovery_score"],
             "level": recovery_level(today_data["recovery_score"]),
             "hrv_last_night": today_data.get("hrv_last_night"),
             "hrv_7day_avg": today_data.get("hrv_7day_avg"),
-            "hrv_status": hrv.get("status") if hrv else None,
+            "hrv_status": today_data.get("hrv_status"),
+            "hrv_baseline_low": today_data.get("hrv_baseline_low"),
+            "hrv_baseline_high": today_data.get("hrv_baseline_high"),
             "rhr": rhr,
             "sleep_score": today_data.get("sleep_score"),
             "sleep_duration_min": today_data.get("sleep_duration_min"),
@@ -613,6 +644,7 @@ def main():
             "rem_sleep_min": today_data.get("rem_sleep_min"),
             "awake_min": today_data.get("awake_min"),
             "stress_avg": today_data.get("stress_avg"),
+            "max_stress": stress.get("max_stress") if stress else None,
             "training_readiness": today_data.get("training_readiness"),
         },
     }
