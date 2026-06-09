@@ -22,6 +22,11 @@ function zoneOf(hr) {
     for (const z of HR_ZONES) if (hr < z.max) return z;
     return HR_ZONES[HR_ZONES.length - 1];
 }
+function zoneBpmLabel(z) {
+    if (z.min === 0) return `<${z.max} bpm`;
+    if (z.max >= 900) return `>${z.min} bpm`;
+    return `${z.min}–${z.max}`;
+}
 
 const READINESS_FEEDBACK = {
     BOOSTED_BY_GOOD_SLEEP: 'Boosté par un bon sommeil',
@@ -491,7 +496,7 @@ function renderZoneDistFromActs(acts, barId, legendId, noteId, polarId) {
         const min = z.byZone[zn.key];
         const pct = Math.round(min / z.total * 100);
         return `<div class="zone-leg-item"><span class="zone-dot" style="background:${zn.color}"></span>
-            <span class="zone-leg-name">${zn.key} ${zn.name}</span>
+            <span class="zone-leg-name">${zn.key} ${zn.name} <span class="zone-leg-bpm">${zoneBpmLabel(zn)}</span></span>
             <span class="zone-leg-pct">${pct}%</span><span class="zone-leg-min">${fmtMin(Math.round(min))}</span></div>`;
     }).join('');
     // Polarization tag
