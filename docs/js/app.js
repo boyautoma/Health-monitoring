@@ -414,6 +414,7 @@ function renderVelo() {
     renderVeloWeek();
     // Volume trend (16wk) + current load — context, not week-specific
     renderSportVol('veloVolChart', 'cycling', 'veloVolTotal', COLORS.purple, 'veloVol');
+    renderAeroProgress();
     renderSportLoad('cycling', { acwr: 'veloAcwr', status: 'veloAcwrStatus', marker: 'veloMarker',
         stress: 'veloStress', trend: 'veloStressTrend', banner: 'veloLoadBanner' });
     chartsRendered.velo = true;
@@ -488,6 +489,45 @@ function renderStrengthReminder() {
 }
 
 // ── Shared sport renderers ──
+
+// Aerobic efficiency = speed per cardiac effort (km/h per %HRR), trended monthly.
+// Rising curve = same effort → more speed = "passing caps".
+function renderAeroProgress() {
+    const prof = (DATA.current || {}).profile || {};
+    const FCMAX = prof.fc_max || 196, FCREST = prof.fc_repos || 50;
+    const eff = a => {
+        if (a.type !== 'cycling' || !a.avg_speed_kmh || !a.avg_hr || (a.distance_km || 0) < 15) return null;
+        const hrr = (a.avg_hr - FCREST) / (FCMAX - FCREST);
+        return hrr > 0.3 ? a.avg_speed_kmh / (hrr * 100) : null;  // km/h per %HRR
+    };
+    const months = {};
+    (DATA.activities || []).forEach(a => {
+        const e = eff(a); if (e == null || !a.date) return;
+        const m = a.date.slice(0, 7);
+        (months[m] = months[m] || []).push(e);
+    });
+    const keys = Object.keys(months).sort().slice(-12);
+    destroyChart('aeroChart');
+    const note = document.getElementById('aeroNote');
+    const deltaEl = document.getElementById('aeroDelta');
+    if (keys.length < 2) { if (note) note.textContent = 'Pas encore assez de données pour la tendance.'; return; }
+    const labels = keys.map(k => { const [y, m] = k.split('-'); return m + '/' + y.slice(2); });
+    const data = keys.map(k => +(months[k].reduce((s, v) => s + v, 0) / months[k].length).toFixed(3));
+    createLine('aeroChart', labels, data, 'idx', COLORS.teal, 'aeroChart');
+    // Delta vs ~6 months ago
+    const last = data[data.length - 1];
+    const ref = data[Math.max(0, data.length - 7)];
+    const pct = ref ? (last - ref) / ref * 100 : 0;
+    if (deltaEl) { deltaEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(0) + '%'; deltaEl.style.color = pct >= 0 ? COLORS.green : COLORS.orange; }
+    // Recent easy-ride speed (relatable number)
+    const now = new Date();
+    const easy = (DATA.activities || []).filter(a => a.type === 'cycling' && a.avg_hr && a.avg_hr < 160 && a.avg_speed_kmh && (a.distance_km || 0) >= 20 && (now - new Date(a.date)) / 86400000 <= 75);
+    const easySpd = easy.length ? easy.reduce((s, a) => s + a.avg_speed_kmh, 0) / easy.length : null;
+    if (note) {
+        note.innerHTML = `${easySpd ? `Sorties faciles récentes : <b>~${easySpd.toFixed(1)} km/h</b>. ` : ''}À effort égal, ton efficacité a ${pct >= 0 ? 'grimpé' : 'baissé'} de <b>${Math.abs(pct).toFixed(0)}%</b> sur ~6 mois. Courbe qui monte = tu passes des caps 🚀`;
+        note.style.color = 'var(--text-2)';
+    }
+}
 
 function renderSportVol(canvasId, type, totalId, color, key) {
     destroyChart(key);

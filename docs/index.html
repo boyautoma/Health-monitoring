@@ -6,7 +6,7 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609k">
+    <link rel="stylesheet" href="css/style.css?v=20260609l">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
 </head>
@@ -131,6 +131,16 @@
                     <span class="vol-total" id="veloVolTotal">--</span>
                 </div>
                 <div class="chart-wrap"><canvas id="veloVolChart"></canvas></div>
+            </div>
+
+            <!-- Aerobic progression: speed per effort (passing caps) -->
+            <div class="vol-card">
+                <div class="vol-header">
+                    <span class="vol-title">Progression — efficacité 🚀</span>
+                    <span class="vol-total" id="aeroDelta">--</span>
+                </div>
+                <div class="chart-wrap"><canvas id="aeroChart"></canvas></div>
+                <div class="zone-note" id="aeroNote"></div>
             </div>
 
             <!-- Intensity zone distribution -->
@@ -429,6 +439,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609k"></script>
+    <script src="js/app.js?v=20260609l"></script>
 </body>
 </html>
