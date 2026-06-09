@@ -238,22 +238,38 @@ function sportLoad(type) {
     return { acwr: chronicW > 0 ? acute / chronicW : 0, curr: acute, prev };
 }
 
+function fmtDayFull(dateStr) {
+    if (!dateStr) return '';
+    try { return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }); }
+    catch { return dateStr; }
+}
+
 function activityRowHTML(a) {
     const type = (a.type || 'running').toLowerCase();
-    let stats = `<span class="activity-dist">${a.distance_km != null ? a.distance_km + ' km' : '--'}</span>`;
-    if (type === 'running' || type === 'walking') stats += `<span class="activity-pace">${a.avg_pace || '--'}/km</span>`;
-    else if (type === 'cycling') stats += `<span class="activity-pace">${a.avg_speed_kmh != null ? a.avg_speed_kmh.toFixed(1) + ' km/h' : '--'}</span>`;
-    if (type === 'cycling') { const w = estPower(a); if (w) stats += `<span class="activity-pwr">~${w} W</span>`; }
-    if (a.avg_hr) stats += `<span class="activity-hr">${Math.round(a.avg_hr)} bpm</span>`;
-    if (a.elevation_gain) stats += `<span class="activity-elev">${Math.round(a.elevation_gain)}m D+</span>`;
+    const cls = getActivityClass(type);
+    const icon = getActivityEmoji(type);
     const stress = a.mechanical_stress != null ? Math.round(a.mechanical_stress) : null;
     const sClass = stress == null ? '' : stress >= 70 ? 'stress-high' : stress >= 40 ? 'stress-med' : 'stress-low';
-    const badge = stress != null ? `<span class="activity-stress ${sClass}">${stress}</span>` : '';
-    let name = a.name || getActivityName(type);
-    if (name.length > 28) name = name.substring(0, 26) + '…';
-    return `<div class="activity-row type-${getActivityClass(type)}">
-        <div class="activity-main"><div class="activity-name">${name}</div><div class="activity-date-text">${fmtDateFull(a.date)}</div></div>
-        <div class="activity-stats">${stats}</div>${badge}</div>`;
+    const badge = stress != null ? `<span class="act-stress ${sClass}">${stress}</span>` : '';
+    // Big metrics (type-specific, max 4)
+    const M = [];
+    if (a.distance_km != null) M.push(['', a.distance_km, 'km']);
+    if (type === 'cycling') {
+        if (a.avg_speed_kmh != null) M.push(['', a.avg_speed_kmh.toFixed(1), 'km/h']);
+        const w = estPower(a); if (w) M.push(['gold', '~' + w, 'W']);
+    } else if (type === 'running' || type === 'walking') {
+        if (a.avg_pace) M.push(['', a.avg_pace, '/km']);
+    }
+    if (a.elevation_gain) M.push(['', Math.round(a.elevation_gain), 'm D+']);
+    const metrics = M.slice(0, 4).map(m => `<div class="act-metric"><span class="act-m-val ${m[0]}">${m[1]}</span><span class="act-m-lbl">${m[2]}</span></div>`).join('');
+    // Secondary line
+    const subs = [];
+    if (a.avg_hr) subs.push(`${Math.round(a.avg_hr)} bpm`);
+    if (a.duration_min) subs.push(fmtMin(Math.round(a.duration_min)));
+    const sub = subs.length ? `<div class="act-sub">${subs.join(' · ')}</div>` : '';
+    return `<div class="activity-row type-${cls}">
+        <div class="act-head"><span class="act-date">${icon} ${fmtDayFull(a.date)}</span>${badge}</div>
+        <div class="act-metrics">${metrics}</div>${sub}</div>`;
 }
 
 function renderFeed(containerId, type, limit, countId) {
@@ -1108,6 +1124,7 @@ function createLine(canvasId, labels, data, unit, color, chartKey) {
 // ── Activity helpers ──
 function getActivityClass(type) { return ['running', 'walking', 'cycling'].includes(type) ? type : 'other'; }
 function getActivityName(type) { return { running: 'Course', walking: 'Marche', cycling: 'Vélo' }[type] || 'Activité'; }
+function getActivityEmoji(type) { return { running: '🏃', walking: '🚶', cycling: '🚴' }[type] || '⚡'; }
 
 // ── Format helpers ──
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val != null ? val : '--'; }

@@ -485,15 +485,11 @@ main {
 /* ── Performance — Activities Feed ────── */
 
 .activities-feed {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 14px 14px 8px;
     margin-bottom: 10px;
 }
 .feed-header {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 10px; padding: 0 2px;
 }
 .feed-title {
     font-size: 13px; font-weight: 700; color: var(--text);
@@ -504,44 +500,25 @@ main {
 }
 
 .activity-row {
-    display: flex; align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    border-left: 3px solid transparent;
-    margin-left: -14px;
-    padding-left: 11px;
-    padding-right: 0;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left: 3px solid var(--text-3); border-radius: 14px;
+    padding: 13px 15px; margin-bottom: 8px;
+    display: flex; flex-direction: column; gap: 9px;
 }
-.activity-row:last-child { border-bottom: none; }
+.activity-row:last-child { margin-bottom: 0; }
 .activity-row.type-running  { border-left-color: var(--green); }
 .activity-row.type-walking  { border-left-color: var(--orange); }
 .activity-row.type-cycling  { border-left-color: var(--purple); }
 .activity-row.type-other    { border-left-color: var(--blue); }
 
-.activity-main { flex: 1; min-width: 0; }
-.activity-name {
-    font-size: 12px; font-weight: 600; color: var(--text);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.activity-date-text {
-    font-size: 10px; color: var(--text-3); margin-top: 1px;
-}
-.activity-stats {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-    margin-right: 8px;
-}
-.activity-dist {
-    font-size: 13px; font-weight: 700; color: var(--text);
-    font-variant-numeric: tabular-nums;
-}
-.activity-pace {
-    font-size: 10px; color: var(--text-2);
-    font-variant-numeric: tabular-nums;
-}
-.activity-elev {
-    font-size: 10px; color: var(--text-3);
-    font-variant-numeric: tabular-nums;
-}
+.act-head { display: flex; justify-content: space-between; align-items: center; }
+.act-date { font-size: 14px; font-weight: 700; text-transform: capitalize; }
+.act-metrics { display: flex; gap: 20px; flex-wrap: wrap; }
+.act-metric { display: flex; flex-direction: column; gap: 1px; }
+.act-m-val { font-size: 19px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.act-m-val.gold { color: var(--gold); }
+.act-m-lbl { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
+.act-sub { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 /* ── Charts ───────────────────────────── */
 
@@ -860,23 +837,15 @@ main {
     height: 160px;
 }
 
-/* Stress badge on activity rows */
-.activity-stress {
-    font-size: 11px; font-weight: 700;
-    padding: 2px 8px; border-radius: 10px;
-    margin-left: 8px; flex-shrink: 0;
-    font-variant-numeric: tabular-nums;
-    min-width: 32px; text-align: center;
+/* Stress chip on activity cards */
+.act-stress {
+    font-size: 11px; font-weight: 800;
+    padding: 3px 9px; border-radius: 8px;
+    flex-shrink: 0; font-variant-numeric: tabular-nums;
 }
-.activity-stress.stress-low {
-    background: var(--green-dim); color: var(--green);
-}
-.activity-stress.stress-med {
-    background: rgba(255,140,66,0.12); color: var(--orange);
-}
-.activity-stress.stress-high {
-    background: var(--red-dim); color: var(--red);
-}
+.act-stress.stress-low  { background: var(--green-dim); color: var(--green); }
+.act-stress.stress-med  { background: rgba(255,140,66,0.15); color: var(--orange); }
+.act-stress.stress-high { background: var(--red-dim); color: var(--red); }
 
 /* ── Responsive ───────────────────────── */
 
