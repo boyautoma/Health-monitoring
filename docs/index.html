@@ -6,7 +6,7 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609c">
+    <link rel="stylesheet" href="css/style.css?v=20260609d">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
 </head>
@@ -107,7 +107,13 @@
         <section class="page" id="pageVelo">
             <div class="section-header">
                 <h2>🚴 Vélo</h2>
-                <span class="section-date" id="veloWeekLabel">cette semaine</span>
+            </div>
+
+            <!-- Week navigator -->
+            <div class="week-nav">
+                <button class="week-nav-btn" id="veloPrev">‹</button>
+                <span class="week-nav-label" id="veloWeekLabel">--</span>
+                <button class="week-nav-btn" id="veloNext">›</button>
             </div>
 
             <!-- Week stats tiles -->
@@ -130,7 +136,7 @@
             <!-- Intensity zone distribution -->
             <div class="zone-card">
                 <div class="zone-header">
-                    <span class="zone-title">Répartition d'intensité <small>(8 sem)</small></span>
+                    <span class="zone-title">Répartition d'intensité</span>
                     <span class="zone-poltag" id="veloPolar">--</span>
                 </div>
                 <div class="zone-bar" id="veloZoneBar"></div>
@@ -174,7 +180,6 @@
         <section class="page" id="pageCourse">
             <div class="section-header">
                 <h2>🏃 Course</h2>
-                <span class="section-date" id="courseWeekLabel">cette semaine</span>
             </div>
 
             <!-- Aerobic form -->
@@ -186,6 +191,13 @@
                 <div class="ref-item"><span class="ref-label">VDOT</span><span class="ref-val" id="courseVdot">--</span></div>
             </div>
             <div class="ref-source" id="courseRefSource"></div>
+
+            <!-- Week navigator -->
+            <div class="week-nav">
+                <button class="week-nav-btn" id="coursePrev">‹</button>
+                <span class="week-nav-label" id="courseWeekLabel">--</span>
+                <button class="week-nav-btn" id="courseNext">›</button>
+            </div>
 
             <!-- Week stats tiles -->
             <div class="sport-stats">
@@ -207,7 +219,7 @@
             <!-- Intensity zone distribution -->
             <div class="zone-card">
                 <div class="zone-header">
-                    <span class="zone-title">Répartition d'intensité <small>(8 sem)</small></span>
+                    <span class="zone-title">Répartition d'intensité</span>
                     <span class="zone-poltag" id="coursePolar">--</span>
                 </div>
                 <div class="zone-bar" id="courseZoneBar"></div>
@@ -376,6 +388,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609c"></script>
+    <script src="js/app.js?v=20260609d"></script>
 </body>
 </html>

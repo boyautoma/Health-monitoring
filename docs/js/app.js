@@ -145,22 +145,62 @@ function weeklyByType(type) {
     return Object.values(map).sort((x, y) => x.week < y.week ? -1 : 1);
 }
 
-// HR zone distribution for a sport over the last N weeks
-function zoneDist(type, weeks) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - weeks * 7);
-    const acts = (DATA.activities || []).filter(a =>
-        a.type === type && a.avg_hr && a.date && new Date(a.date) >= cutoff);
+// Activities of a sport within a specific week (Monday key)
+function activitiesInWeek(type, weekKey) {
+    return (DATA.activities || []).filter(a => a.type === type && a.date && weekKeyOf(a.date) === weekKey);
+}
+
+// HR zone distribution from an arbitrary list of activities
+function zoneStatsFromActs(acts) {
     const byZone = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0 };
-    acts.forEach(a => { byZone[zoneOf(a.avg_hr).key] += a.duration_min || 0; });
+    let count = 0;
+    acts.forEach(a => { if (a.avg_hr) { byZone[zoneOf(a.avg_hr).key] += a.duration_min || 0; count++; } });
     const total = Object.values(byZone).reduce((s, v) => s + v, 0);
     const easy = byZone.Z1 + byZone.Z2;
     const hard = byZone.Z3 + byZone.Z4 + byZone.Z5;
     return {
-        byZone, total, count: acts.length,
+        byZone, total, count,
         easyPct: total ? Math.round(easy / total * 100) : 0,
         hardPct: total ? Math.round(hard / total * 100) : 0,
     };
+}
+
+// Label for a week (Monday..Sunday), tags the current week
+function weekRangeLabel(weekKey) {
+    const [y, m, d] = weekKey.split('-').map(Number);
+    const mon = new Date(y, m - 1, d), sun = new Date(y, m - 1, d + 6);
+    const f = dt => dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const now = weekKeyOf(new Date().toISOString().slice(0, 10));
+    return `${f(mon)} – ${f(sun)}${weekKey === now ? ' · cette sem.' : ''}`;
+}
+
+// Update a week navigator's label + button states
+function setupWeekNav(prefix, weeks, idx) {
+    const label = document.getElementById(prefix + 'WeekLabel');
+    const prev = document.getElementById(prefix + 'Prev');
+    const next = document.getElementById(prefix + 'Next');
+    if (!weeks.length) {
+        if (label) label.textContent = 'Aucune donnée';
+        if (prev) prev.disabled = true;
+        if (next) next.disabled = true;
+        return;
+    }
+    if (label) label.textContent = weekRangeLabel(weeks[idx].week);
+    if (prev) prev.disabled = idx <= 0;
+    if (next) next.disabled = idx >= weeks.length - 1;
+}
+
+// Render a feed from a given (already filtered/sorted) activity list
+function renderFeedFromActs(containerId, acts, countId) {
+    const list = document.getElementById(containerId);
+    if (!list) return;
+    list.querySelectorAll('.activity-row').forEach(r => r.remove());
+    if (countId) {
+        const el = document.getElementById(countId);
+        if (el) el.textContent = acts.length + ' séance' + (acts.length > 1 ? 's' : '');
+    }
+    if (acts.length) list.insertAdjacentHTML('beforeend', acts.map(activityRowHTML).join(''));
+    else list.insertAdjacentHTML('beforeend', '<div class="activity-row"><div class="activity-main"><div class="activity-name" style="color:var(--text-3)">Aucune séance cette semaine</div></div></div>');
 }
 
 // ACWR + weekly mechanical-stress for one sport
@@ -325,33 +365,41 @@ function renderWeekStrip(containerId) {
 //  VÉLO TAB
 // ════════════════════════════════════════════
 
+let veloWeeks = [], veloIdx = 0, veloNavWired = false;
+
 function renderVelo() {
-    const wk = weeklyByType('cycling');
-    const thisWeek = weekKeyOf(new Date().toISOString().slice(0, 10));
-    const cur = (wk.length && wk[wk.length - 1].week === thisWeek) ? wk[wk.length - 1] : { km: 0, min: 0, dplus: 0, count: 0 };
-    setText('veloKm', cur.km.toFixed(0));
-    setText('veloH', fmtMin(Math.round(cur.min)));
-    setText('veloDplus', Math.round(cur.dplus));
-    setText('veloCount', cur.count);
-
-    // Volume chart
+    veloWeeks = weeklyByType('cycling');           // weeks with ≥1 ride, ascending
+    veloIdx = Math.max(0, veloWeeks.length - 1);   // default = most recent week with a ride
+    if (!veloNavWired) {
+        document.getElementById('veloPrev').addEventListener('click', () => { if (veloIdx > 0) { veloIdx--; renderVeloWeek(); } });
+        document.getElementById('veloNext').addEventListener('click', () => { if (veloIdx < veloWeeks.length - 1) { veloIdx++; renderVeloWeek(); } });
+        veloNavWired = true;
+    }
+    renderVeloWeek();
+    // Volume trend (16wk) + current load — context, not week-specific
     renderSportVol('veloVolChart', 'cycling', 'veloVolTotal', COLORS.purple, 'veloVol');
-
-    // Zone distribution
-    renderZoneDist('cycling', 'veloZoneBar', 'veloZoneLegend', 'veloZoneNote', 'veloPolar');
-
-    // Load
     renderSportLoad('cycling', { acwr: 'veloAcwr', status: 'veloAcwrStatus', marker: 'veloMarker',
         stress: 'veloStress', trend: 'veloStressTrend', banner: 'veloLoadBanner' });
-
-    // Feed
-    renderFeed('veloFeed', 'cycling', 25, 'veloFeedCount');
     chartsRendered.velo = true;
+}
+
+function renderVeloWeek() {
+    setupWeekNav('velo', veloWeeks, veloIdx);
+    const w = veloWeeks.length ? veloWeeks[veloIdx] : { km: 0, min: 0, dplus: 0, count: 0, week: null };
+    setText('veloKm', w.km.toFixed(0));
+    setText('veloH', fmtMin(Math.round(w.min)));
+    setText('veloDplus', Math.round(w.dplus));
+    setText('veloCount', w.count);
+    const acts = w.week ? activitiesInWeek('cycling', w.week) : [];
+    renderZoneDistFromActs(acts, 'veloZoneBar', 'veloZoneLegend', 'veloZoneNote', 'veloPolar');
+    renderFeedFromActs('veloFeed', acts, 'veloFeedCount');
 }
 
 // ════════════════════════════════════════════
 //  COURSE TAB
 // ════════════════════════════════════════════
+
+let courseWeeks = [], courseIdx = 0, courseNavWired = false;
 
 function renderCourse() {
     const c = DATA.current || {};
@@ -362,22 +410,29 @@ function renderCourse() {
     const src = document.getElementById('courseRefSource');
     if (src) src.textContent = p.vdot_source || '';
 
-    const wk = weeklyByType('running');
-    const thisWeek = weekKeyOf(new Date().toISOString().slice(0, 10));
-    const cur = (wk.length && wk[wk.length - 1].week === thisWeek) ? wk[wk.length - 1] : { km: 0, min: 0, dplus: 0, count: 0 };
-    setText('courseKm', cur.km.toFixed(0));
-    setText('courseH', fmtMin(Math.round(cur.min)));
-    setText('courseDplus', Math.round(cur.dplus));
-    setText('courseCount', cur.count);
-
+    courseWeeks = weeklyByType('running');
+    courseIdx = Math.max(0, courseWeeks.length - 1);
+    if (!courseNavWired) {
+        document.getElementById('coursePrev').addEventListener('click', () => { if (courseIdx > 0) { courseIdx--; renderCourseWeek(); } });
+        document.getElementById('courseNext').addEventListener('click', () => { if (courseIdx < courseWeeks.length - 1) { courseIdx++; renderCourseWeek(); } });
+        courseNavWired = true;
+    }
+    renderCourseWeek();
     renderSportVol('courseVolChart', 'running', 'courseVolTotal', COLORS.green, 'courseVol');
-    renderZoneDist('running', 'courseZoneBar', 'courseZoneLegend', 'courseZoneNote', 'coursePolar');
-
-    // Strength reminder (periostitis prevention)
     renderStrengthReminder();
-
-    renderFeed('courseFeed', 'running', 25, 'courseFeedCount');
     chartsRendered.course = true;
+}
+
+function renderCourseWeek() {
+    setupWeekNav('course', courseWeeks, courseIdx);
+    const w = courseWeeks.length ? courseWeeks[courseIdx] : { km: 0, min: 0, dplus: 0, count: 0, week: null };
+    setText('courseKm', w.km.toFixed(0));
+    setText('courseH', fmtMin(Math.round(w.min)));
+    setText('courseDplus', Math.round(w.dplus));
+    setText('courseCount', w.count);
+    const acts = w.week ? activitiesInWeek('running', w.week) : [];
+    renderZoneDistFromActs(acts, 'courseZoneBar', 'courseZoneLegend', 'courseZoneNote', 'coursePolar');
+    renderFeedFromActs('courseFeed', acts, 'courseFeedCount');
 }
 
 function renderStrengthReminder() {
@@ -413,8 +468,8 @@ function renderSportVol(canvasId, type, totalId, color, key) {
     }
 }
 
-function renderZoneDist(type, barId, legendId, noteId, polarId) {
-    const z = zoneDist(type, 8);
+function renderZoneDistFromActs(acts, barId, legendId, noteId, polarId) {
+    const z = zoneStatsFromActs(acts);
     const bar = document.getElementById(barId);
     const legend = document.getElementById(legendId);
     const note = document.getElementById(noteId);
