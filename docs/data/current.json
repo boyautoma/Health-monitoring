@@ -1,6 +1,6 @@
 {
-  "last_sync": "2026-06-08T21:00:26.737888",
-  "date": "2026-06-08",
+  "last_sync": "2026-06-09T10:00:22.550033",
+  "date": "2026-06-09",
   "profile": {
     "vo2max": 47,
     "vma": 13.43,
@@ -12,18 +12,18 @@
     "hrv_alert_threshold": 49
   },
   "recovery": {
-    "score": 76,
+    "score": 85,
     "level": "excellent",
     "hrv_last_night": null,
-    "hrv_7day_avg": 59,
-    "hrv_status": "UNBALANCED",
-    "rhr": 55,
-    "sleep_score": 60,
-    "sleep_duration_min": 408,
-    "deep_sleep_min": 59,
-    "light_sleep_min": 316,
-    "rem_sleep_min": 33,
-    "awake_min": 31,
+    "hrv_7day_avg": 60,
+    "hrv_status": "BALANCED",
+    "rhr": 44,
+    "sleep_score": 83,
+    "sleep_duration_min": 428,
+    "deep_sleep_min": 84,
+    "light_sleep_min": 285,
+    "rem_sleep_min": 59,
+    "awake_min": 8,
     "stress_avg": null,
     "training_readiness": null
   }
