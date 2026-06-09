@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-06-09T18:30:53.440875",
+  "last_sync": "2026-06-09T21:01:31.825818",
   "date": "2026-06-09",
   "profile": {
     "vo2max": 47,
@@ -8,16 +8,16 @@
     "vdot_source": "Intervals analysis: 1000m @ 4:09/km FC 182 (15 mai), HR-method p75=47",
     "fc_max": 196,
     "fc_repos": 53,
-    "hrv_baseline": 51,
-    "hrv_alert_threshold": 49
+    "hrv_baseline": 68,
+    "hrv_alert_threshold": 59
   },
   "recovery": {
     "garmin_readiness": 50,
     "readiness_level": "MODERATE",
     "readiness_feedback": "BOOSTED_BY_GOOD_SLEEP",
     "recovery_time_h": 24.9,
-    "score": 89,
-    "level": "excellent",
+    "score": 61,
+    "level": "moderate",
     "hrv_last_night": 82,
     "hrv_7day_avg": 60,
     "hrv_status": "BALANCED",
