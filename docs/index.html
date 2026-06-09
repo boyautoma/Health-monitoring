@@ -6,7 +6,7 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609g">
+    <link rel="stylesheet" href="css/style.css?v=20260609h">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
 </head>
@@ -366,9 +366,14 @@
             <div class="block-title">Les 3 boss</div>
             <div class="boss-list" id="bossList"></div>
 
-            <!-- Badges -->
+            <!-- Badges : résumé + sous-dossier dépliable -->
             <div class="block-title">Badges</div>
-            <div class="badge-grid" id="badgeGrid"></div>
+            <div class="badge-summary" id="badgeSummary"></div>
+            <div class="badge-full" id="badgeFull" hidden>
+                <div id="badgeLadders"></div>
+                <div class="badge-sub">Badges spéciaux</div>
+                <div class="badge-grid" id="badgeGrid"></div>
+            </div>
 
             <!-- Menu de séances à piocher selon les jambes -->
             <div class="block-title">Séances — pioche selon les jambes</div>
@@ -420,6 +425,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609g"></script>
+    <script src="js/app.js?v=20260609h"></script>
 </body>
 </html>

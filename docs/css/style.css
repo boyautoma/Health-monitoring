@@ -1038,6 +1038,27 @@ main {
 .boss-bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
 .boss-best { font-size: 12px; color: var(--text-3); }
 
+/* Badge summary + sub-folder */
+.badge-summary { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; }
+.badge-sum-left { display: flex; flex-direction: column; }
+.badge-sum-count { font-size: 26px; font-weight: 800; }
+.badge-sum-count small { font-size: 15px; color: var(--text-3); font-weight: 600; }
+.badge-sum-lbl { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
+.badge-toggle { background: var(--bg-card-alt); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; cursor: pointer; }
+.badge-toggle:hover { background: var(--bg-pill); }
+.badge-full[hidden] { display: none; }
+.badge-sub { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 4px 10px; }
+
+/* Progression ladders */
+.ladder { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+.ladder-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.ladder-icon { font-size: 16px; }
+.ladder-name { font-size: 13px; font-weight: 700; flex: 1; }
+.ladder-val { font-size: 13px; font-weight: 700; color: var(--gold); }
+.tier-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tier { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 8px; background: var(--bg-card-alt); color: var(--text-3); border: 1px solid transparent; }
+.tier.ok { background: var(--green-dim); color: var(--green); border-color: rgba(0,241,159,0.25); }
+
 /* Badges grid */
 .badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
 .badge { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
@@ -1052,6 +1073,8 @@ main {
 .badge.locked .badge-state { color: var(--text-3); }
 
 /* 2 rules + flexible cadre */
+.rule-note { font-size: 12px; color: var(--gold); line-height: 1.45; margin-top: 4px; padding: 10px 12px; background: rgba(255,215,0,0.06); border-radius: 10px; }
+.rule-note b { color: var(--text); }
 .rules-card { margin-bottom: 12px; }
 .rules-title { font-size: 13px; font-weight: 800; margin-bottom: 8px; }
 .rule { display: flex; gap: 10px; font-size: 13px; color: var(--text-2); line-height: 1.45; margin-bottom: 8px; }

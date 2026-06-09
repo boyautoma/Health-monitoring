@@ -577,24 +577,61 @@ function bestPolarWeek() {
 }
 function maxOf(arr) { return arr.length ? Math.max(...arr) : 0; }
 
-// ── Badges ──
-const BADGES = [
-    { icon: '💯', name: 'Centurion', desc: '100 km d\'une traite',
-      done: c => c.some(a => a.distance_km >= 100), best: c => `record ${Math.round(maxOf(c.map(a => a.distance_km || 0)))} km` },
-    { icon: '⛰️', name: 'Chèvre', desc: '1000 m D+ en une sortie',
-      done: c => c.some(a => (a.elevation_gain || 0) >= 1000), best: c => `record ${Math.round(maxOf(c.map(a => a.elevation_gain || 0)))} m` },
-    { icon: '🕐', name: 'Longue haleine', desc: '4h sur le vélo',
-      done: c => c.some(a => a.duration_min >= 240), best: c => `record ${fmtMin(Math.round(maxOf(c.map(a => a.duration_min || 0))))}` },
-    { icon: '⚡', name: '200 Watts', desc: '~200 W estimés sur 1h+',
-      done: c => c.some(a => a.duration_min >= 60 && (estPower(a) || 0) >= 200), best: c => `record ${Math.round(maxOf(c.filter(a => a.duration_min >= 60).map(a => estPower(a) || 0)))} W` },
-    { icon: '🎯', name: '30 à l\'heure', desc: '30 km/h · 1h · 300 D+',
-      done: c => c.some(a => a.avg_speed_kmh >= 30 && a.duration_min >= 55 && (a.elevation_gain || 0) >= 300), best: c => { const f = c.filter(a => a.duration_min >= 55 && (a.elevation_gain || 0) >= 300); return f.length ? `meilleur ${maxOf(f.map(a => a.avg_speed_kmh)).toFixed(1)} km/h` : 'à viser'; } },
-    { icon: '🎚️', name: 'Semaine polarisée', desc: 'Une semaine ≥ 80% easy',
-      done: () => bestPolarWeek() >= 80, best: () => `meilleure ${bestPolarWeek()}% easy` },
-    { icon: '📅', name: 'Grosse semaine', desc: '200 km en une semaine',
-      done: () => maxOf(weeklyByType('cycling').map(w => w.km)) >= 200, best: () => `record ${Math.round(maxOf(weeklyByType('cycling').map(w => w.km)))} km` },
-    { icon: '🔥', name: 'Diesel', desc: '~200 W tenus sur 4h',
-      done: c => c.some(a => a.duration_min >= 240 && (estPower(a) || 0) >= 200), best: c => { const f = c.filter(a => a.duration_min >= 210); return f.length ? `~${Math.round(maxOf(f.map(a => estPower(a) || 0)))} W sur longue` : 'à viser'; } },
+// ── Date-streak helpers ──
+function sortedCyclingDates(c) { return [...new Set(c.map(a => a.date).filter(Boolean))].sort(); }
+function hasConsecutiveDays(c, n) {
+    const ds = sortedCyclingDates(c);
+    if (ds.length < n) return false;
+    let run = 1;
+    for (let i = 1; i < ds.length; i++) {
+        const diff = Math.round((new Date(ds[i]) - new Date(ds[i - 1])) / 86400000);
+        run = diff === 1 ? run + 1 : 1;
+        if (run >= n) return true;
+    }
+    return n <= 1;
+}
+function maxWeekStreak() {
+    const wks = weeklyByType('cycling').map(w => w.week).sort();
+    let best = 0, run = 0, prev = null;
+    wks.forEach(wk => {
+        const d = prev ? Math.round((new Date(wk) - new Date(prev)) / 86400000) : 0;
+        run = (prev && d === 7) ? run + 1 : 1;
+        best = Math.max(best, run); prev = wk;
+    });
+    return best;
+}
+const sumBy = (c, f) => c.reduce((s, a) => s + (f(a) || 0), 0);
+
+// ── Badge ladders (progression tiers) ──
+const LADDERS = [
+    { icon: '📏', name: 'Distance (1 sortie)', unit: 'km', tiers: [25, 50, 75, 100, 125, 150, 200], val: c => maxOf(c.map(a => a.distance_km || 0)) },
+    { icon: '⛰️', name: 'Dénivelé (1 sortie)', unit: 'm', tiers: [250, 500, 750, 1000, 1500, 2000], val: c => maxOf(c.map(a => a.elevation_gain || 0)) },
+    { icon: '🕐', name: 'Durée (1 sortie)', unit: '', tiers: [1, 2, 3, 4, 5, 6], fmt: t => t + 'h', val: c => maxOf(c.map(a => (a.duration_min || 0) / 60)) },
+    { icon: '⚡', name: 'Puissance estimée (1h+)', unit: 'W', tiers: [150, 175, 200, 225, 250], val: c => maxOf(c.filter(a => a.duration_min >= 60).map(a => estPower(a) || 0)) },
+    { icon: '💨', name: 'Vitesse moy. (20 km+)', unit: 'km/h', tiers: [25, 27, 29, 31, 33], val: c => maxOf(c.filter(a => a.distance_km >= 20).map(a => a.avg_speed_kmh || 0)) },
+    { icon: '📅', name: 'Volume en 1 semaine', unit: 'km', tiers: [100, 150, 200, 250, 300], val: () => maxOf(weeklyByType('cycling').map(w => w.km)) },
+    { icon: '🌍', name: 'Distance cumulée', unit: 'km', tiers: [1000, 2500, 5000, 10000, 15000, 25000], val: c => sumBy(c, a => a.distance_km) },
+    { icon: '🏔️', name: 'Dénivelé cumulé', unit: 'm', tiers: [10000, 25000, 50000, 100000, 150000, 250000], val: c => sumBy(c, a => a.elevation_gain) },
+];
+
+// ── Special / atypical badges ──
+const SPECIALS = [
+    { icon: '💯', name: 'Centurion', desc: '100 km d\'une traite', done: c => c.some(a => a.distance_km >= 100) },
+    { icon: '🔥', name: 'Diesel', desc: '~200 W tenus sur 4h', done: c => c.some(a => a.duration_min >= 240 && (estPower(a) || 0) >= 200) },
+    { icon: '🎯', name: '30 à l\'heure', desc: '30 km/h · 1h · 300 D+', done: c => c.some(a => a.avg_speed_kmh >= 30 && a.duration_min >= 55 && (a.elevation_gain || 0) >= 300) },
+    { icon: '🎚️', name: 'Polarisé', desc: 'Une semaine ≥ 80% easy', done: () => bestPolarWeek() >= 80 },
+    { icon: '🎚️', name: 'Discipline', desc: 'Une semaine ≥ 70% easy', done: () => { let b = 0; weeklyByType('cycling').forEach(w => { const z = zoneStatsFromActs(activitiesInWeek('cycling', w.week)); if (z.count >= 2) b = Math.max(b, z.easyPct); }); return b >= 70; } },
+    { icon: '🔁', name: 'Doublé', desc: '2 jours de vélo d\'affilée', done: c => hasConsecutiveDays(c, 2) },
+    { icon: '⚡', name: 'Triplé', desc: '3 jours d\'affilée', done: c => hasConsecutiveDays(c, 3) },
+    { icon: '🗓️', name: 'Métronome', desc: '4 semaines de suite', done: () => maxWeekStreak() >= 4 },
+    { icon: '📆', name: 'Increvable', desc: '8 semaines de suite', done: () => maxWeekStreak() >= 8 },
+    { icon: '🌋', name: 'Everest', desc: '8 848 m D+ cumulés', done: c => sumBy(c, a => a.elevation_gain) >= 8848 },
+    { icon: '🦵', name: 'Marathon vélo', desc: '42 km non-stop', done: c => c.some(a => a.distance_km >= 42) },
+    { icon: '🚀', name: 'Lancé', desc: '40 km/h+ de moyenne... un jour', done: c => c.some(a => a.avg_speed_kmh >= 40) },
+    { icon: '🧗', name: 'Mur', desc: 'Sortie à +15 m D+/km', done: c => c.some(a => a.distance_km >= 20 && (a.elevation_gain || 0) / a.distance_km >= 15) },
+    { icon: '📦', name: 'Grosse semaine', desc: '200 km en 7 jours', done: () => maxOf(weeklyByType('cycling').map(w => w.km)) >= 200 },
+    { icon: '🏋️', name: 'Bloc costaud', desc: '4 sorties dans la semaine', done: () => maxOf(weeklyByType('cycling').map(w => w.count)) >= 4 },
+    { icon: '🌙', name: 'Marathonien', desc: '200 km — un jour viendra', done: c => c.some(a => a.distance_km >= 200) },
 ];
 
 // ── Boss fights ──
@@ -705,6 +742,7 @@ function renderProgCard() {
             <div class="rules-title">🧠 Tes 2 règles</div>
             <div class="rule"><span class="rule-num">1</span><span>La plupart du temps : <b>facile</b>, tu peux papoter. Sur tes côtes la FC monte (160+), c'est <b>normal</b> — reste assis, petit braquet, sans forcer. Juge à l'effort, pas au cardio.</span></div>
             <div class="rule"><span class="rule-num">2</span><span><b>1-2×/sem : tu pousses</b>, et seulement si frais. Jambes flagada au carrefour ? Tu écourtes. Zéro culpabilité.</span></div>
+            <div class="rule-note">☀️ Chaleur + débutant : <b>oublie le chiffre 145</b>. Ton « facile » est plus haut aujourd'hui qu'il le sera dans 2 mois. À effort égal, ta FC va baisser semaine après semaine — <b>ça, c'est passer un cap</b>.</div>
         </div>
         <div class="prog-today ${cls}"><span class="prog-today-lbl">${icon} Suggestion du jour</span>
             <span class="prog-today-title">${title}</span><span class="prog-today-desc">${msg}</span></div>`;
@@ -742,16 +780,47 @@ function renderBossList(c) {
 }
 
 function renderBadgeGrid(c) {
+    let unlocked = 0, total = 0;
+    // Ladders (progression tiers)
+    const ladders = document.getElementById('badgeLadders');
+    if (ladders) {
+        ladders.innerHTML = LADDERS.map(L => {
+            const v = L.val(c);
+            const chips = L.tiers.map(t => {
+                total++; const ok = v >= t; if (ok) unlocked++;
+                return `<span class="tier ${ok ? 'ok' : ''}">${L.fmt ? L.fmt(t) : (t >= 1000 ? (t / 1000) + 'k' : t)}</span>`;
+            }).join('');
+            const cur = L.fmt ? L.fmt(+v.toFixed(1)) : Math.round(v).toLocaleString('fr-FR');
+            return `<div class="ladder"><div class="ladder-head"><span class="ladder-icon">${L.icon}</span>
+                <span class="ladder-name">${L.name}</span><span class="ladder-val">${cur} ${L.unit}</span></div>
+                <div class="tier-row">${chips}</div></div>`;
+        }).join('');
+    }
+    // Specials
     const el = document.getElementById('badgeGrid');
-    if (!el) return;
-    el.innerHTML = BADGES.map(b => {
-        const done = b.done(c);
-        return `<div class="badge ${done ? 'unlocked' : 'locked'}">
-            <span class="badge-icon">${b.icon}</span>
-            <span class="badge-name">${b.name}</span>
-            <span class="badge-desc">${b.desc}</span>
-            <span class="badge-state">${done ? '✅ débloqué' : '🔒 ' + b.best(c)}</span></div>`;
-    }).join('');
+    if (el) {
+        el.innerHTML = SPECIALS.map(b => {
+            total++; const done = b.done(c); if (done) unlocked++;
+            return `<div class="badge ${done ? 'unlocked' : 'locked'}">
+                <span class="badge-icon">${b.icon}</span>
+                <span class="badge-name">${b.name}</span>
+                <span class="badge-desc">${b.desc}</span>
+                <span class="badge-state">${done ? '✅' : '🔒'}</span></div>`;
+        }).join('');
+    }
+    // Summary + toggle
+    const sum = document.getElementById('badgeSummary');
+    if (sum) {
+        sum.innerHTML = `<div class="badge-sum-left"><span class="badge-sum-count">${unlocked}<small>/${total}</small></span><span class="badge-sum-lbl">badges débloqués</span></div>
+            <button class="badge-toggle" id="badgeToggle">Tout voir ›</button>`;
+        const tog = document.getElementById('badgeToggle');
+        const full = document.getElementById('badgeFull');
+        if (tog && full) tog.addEventListener('click', () => {
+            const hidden = full.hasAttribute('hidden');
+            if (hidden) full.removeAttribute('hidden'); else full.setAttribute('hidden', '');
+            tog.textContent = hidden ? 'Réduire ‹' : 'Tout voir ›';
+        });
+    }
 }
 
 function renderProgWeek() {
