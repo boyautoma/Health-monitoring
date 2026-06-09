@@ -28,6 +28,19 @@ function zoneBpmLabel(z) {
     return `${z.min}–${z.max}`;
 }
 
+// ── Estimated cycling power (physics model, no power meter) ──
+const RIDER_KG = 72, BIKE_KG = 10, CRR = 0.005, RHO = 1.225, CDA = 0.32, DRIVE = 0.97, GRAV = 9.81;
+function estPower(a) {
+    if (!a || a.type !== 'cycling' || !a.avg_speed_kmh || !a.duration_min) return null;
+    const m = RIDER_KG + BIKE_KG;
+    const v = a.avg_speed_kmh / 3.6;
+    const durS = a.duration_min * 60;
+    const vam = (a.elevation_gain || 0) / durS;          // m/s climbed (avg)
+    const p = (m * GRAV * vam) + (CRR * m * GRAV * v) + (0.5 * RHO * CDA * v * v * v);
+    return Math.round(p / DRIVE);
+}
+function estWkg(a) { const p = estPower(a); return p ? p / RIDER_KG : null; }
+
 const READINESS_FEEDBACK = {
     BOOSTED_BY_GOOD_SLEEP: 'Boosté par un bon sommeil',
     TIME_TO_SLOW_DOWN: 'Lève le pied',
@@ -62,6 +75,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         if (target === 'pageVelo'   && !chartsRendered.velo)   renderVelo();
         if (target === 'pageCourse' && !chartsRendered.course) renderCourse();
         if (target === 'pageRecup'  && !chartsRendered.recup)  renderRecup();
+        if (target === 'pageDefis'  && !chartsRendered.defis)  renderDefis();
     });
 });
 
@@ -229,6 +243,7 @@ function activityRowHTML(a) {
     let stats = `<span class="activity-dist">${a.distance_km != null ? a.distance_km + ' km' : '--'}</span>`;
     if (type === 'running' || type === 'walking') stats += `<span class="activity-pace">${a.avg_pace || '--'}/km</span>`;
     else if (type === 'cycling') stats += `<span class="activity-pace">${a.avg_speed_kmh != null ? a.avg_speed_kmh.toFixed(1) + ' km/h' : '--'}</span>`;
+    if (type === 'cycling') { const w = estPower(a); if (w) stats += `<span class="activity-pwr">~${w} W</span>`; }
     if (a.avg_hr) stats += `<span class="activity-hr">${Math.round(a.avg_hr)} bpm</span>`;
     if (a.elevation_gain) stats += `<span class="activity-elev">${Math.round(a.elevation_gain)}m D+</span>`;
     const stress = a.mechanical_stress != null ? Math.round(a.mechanical_stress) : null;
@@ -543,6 +558,232 @@ function renderSportLoad(type, ids) {
         else if (ch < -5) { trendEl.textContent = '↓' + Math.round(Math.abs(ch)) + '%'; trendEl.style.color = COLORS.green; }
         else { trendEl.textContent = '~ stable'; trendEl.style.color = COLORS.gold; }
     }
+}
+
+// ════════════════════════════════════════════
+//  DÉFIS / GAME TAB
+// ════════════════════════════════════════════
+
+const cyclingActs = () => (DATA.activities || []).filter(a => a.type === 'cycling');
+
+// Best easy% across any cycling week with ≥2 HR rides
+function bestPolarWeek() {
+    let best = 0;
+    weeklyByType('cycling').forEach(w => {
+        const z = zoneStatsFromActs(activitiesInWeek('cycling', w.week));
+        if (z.count >= 2) best = Math.max(best, z.easyPct);
+    });
+    return best;
+}
+function maxOf(arr) { return arr.length ? Math.max(...arr) : 0; }
+
+// ── Badges ──
+const BADGES = [
+    { icon: '💯', name: 'Centurion', desc: '100 km d\'une traite',
+      done: c => c.some(a => a.distance_km >= 100), best: c => `record ${Math.round(maxOf(c.map(a => a.distance_km || 0)))} km` },
+    { icon: '⛰️', name: 'Chèvre', desc: '1000 m D+ en une sortie',
+      done: c => c.some(a => (a.elevation_gain || 0) >= 1000), best: c => `record ${Math.round(maxOf(c.map(a => a.elevation_gain || 0)))} m` },
+    { icon: '🕐', name: 'Longue haleine', desc: '4h sur le vélo',
+      done: c => c.some(a => a.duration_min >= 240), best: c => `record ${fmtMin(Math.round(maxOf(c.map(a => a.duration_min || 0))))}` },
+    { icon: '⚡', name: '200 Watts', desc: '~200 W estimés sur 1h+',
+      done: c => c.some(a => a.duration_min >= 60 && (estPower(a) || 0) >= 200), best: c => `record ${Math.round(maxOf(c.filter(a => a.duration_min >= 60).map(a => estPower(a) || 0)))} W` },
+    { icon: '🎯', name: '30 à l\'heure', desc: '30 km/h · 1h · 300 D+',
+      done: c => c.some(a => a.avg_speed_kmh >= 30 && a.duration_min >= 55 && (a.elevation_gain || 0) >= 300), best: c => { const f = c.filter(a => a.duration_min >= 55 && (a.elevation_gain || 0) >= 300); return f.length ? `meilleur ${maxOf(f.map(a => a.avg_speed_kmh)).toFixed(1)} km/h` : 'à viser'; } },
+    { icon: '🎚️', name: 'Semaine polarisée', desc: 'Une semaine ≥ 80% easy',
+      done: () => bestPolarWeek() >= 80, best: () => `meilleure ${bestPolarWeek()}% easy` },
+    { icon: '📅', name: 'Grosse semaine', desc: '200 km en une semaine',
+      done: () => maxOf(weeklyByType('cycling').map(w => w.km)) >= 200, best: () => `record ${Math.round(maxOf(weeklyByType('cycling').map(w => w.km)))} km` },
+    { icon: '🔥', name: 'Diesel', desc: '~200 W tenus sur 4h',
+      done: c => c.some(a => a.duration_min >= 240 && (estPower(a) || 0) >= 200), best: c => { const f = c.filter(a => a.duration_min >= 210); return f.length ? `~${Math.round(maxOf(f.map(a => estPower(a) || 0)))} W sur longue` : 'à viser'; } },
+];
+
+// ── Boss fights ──
+const BOSSES = [
+    { icon: '🎯', name: '30 à l\'heure', target: '30 km/h · 1h · 300 D+',
+      compute: c => { const f = c.filter(a => a.duration_min >= 55 && (a.elevation_gain || 0) >= 300); const best = maxOf(f.map(a => a.avg_speed_kmh)); return { pct: Math.min(100, best / 30 * 100), label: f.length ? `Meilleur : ${best.toFixed(1)} km/h (1h+, 300+ D+)` : 'Aucune sortie qualifiante', done: best >= 30 }; } },
+    { icon: '🧱', name: 'Le mur des 200 W', target: '200 W estimés sur 4h',
+      compute: c => { const longs = c.filter(a => a.duration_min >= 180); const bestW = maxOf(longs.map(a => estPower(a) || 0)); const src = longs.find(a => (estPower(a) || 0) === bestW); return { pct: Math.min(100, bestW / 200 * 100), label: src ? `Meilleur : ~${bestW} W sur ${(src.duration_min / 60).toFixed(1)}h` : 'Pas encore de sortie 3h+', done: c.some(a => a.duration_min >= 240 && (estPower(a) || 0) >= 200) }; } },
+    { icon: '🏔️', name: 'Le 200', target: '200 km solo en autonomie',
+      compute: c => { const best = maxOf(c.map(a => a.distance_km || 0)); return { pct: Math.min(100, best / 200 * 100), label: `Record : ${Math.round(best)} km`, done: best >= 200 }; } },
+];
+
+// ── XP ──
+function rideXP(a) {
+    const base = (a.duration_min || 0) + (a.elevation_gain || 0) * 0.1;
+    const bonus = (a.avg_hr && a.avg_hr < 155) ? 1.3 : 1.0;  // reward easy (Z2) discipline
+    return Math.round(base * bonus);
+}
+const totalXP = () => cyclingActs().reduce((s, a) => s + rideXP(a), 0);
+const weekXP = wk => activitiesInWeek('cycling', wk).reduce((s, a) => s + rideXP(a), 0);
+
+// ── 11-week program ──
+const PROGRAM_START = '2026-06-15';  // lundi
+function buildProgram() {
+    const S = (dow, type, title, dur, hr, desc) => ({ dow, type, title, dur, hr, desc });
+    const wks = [];
+    for (let i = 0; i < 3; i++) wks.push({ block: 'Bloc 1 — Fondations', theme: 'Sortir du tempo, bâtir la base Z2', sessions: [
+        S(2, 'torque', `Force-vélocité ${4 + i}×5 min`, 75, '150-160', 'Gros braquet 50-60 rpm en légère côte. Cardio modéré, jambes qui poussent. 3 min récup entre.'),
+        S(3, 'easy', 'Endurance Z2', 90, '<145', 'En aisance totale, tu peux parler. Si ça pique, ralentis. Pédalage rond.'),
+        S(5, 'easy', 'Endurance Z2', 75, '<145', 'Facile — c\'est ici que se bâtit ta base aérobie.'),
+        S(0, 'long', `Sortie longue ${(2 + i * 0.5).toFixed(1)}h`, 120 + i * 30, '<150', 'Le pilier durabilité. Z2 strict, mange/bois toutes les 20 min (entraîne le ventre).'),
+    ] });
+    const b2 = [180, 210, 240];
+    for (let i = 0; i < 3; i++) wks.push({ block: 'Bloc 2 — Diesel', theme: 'Endurance musculaire, gros braquet, sorties longues', sessions: [
+        S(2, 'torque', `Force-vélocité ${5 + i}×${6 + i} min`, 80 + i * 5, '150-162', 'Gros braquet 50-55 rpm. Charge musculaire forte, cardio contenu.'),
+        S(3, 'easy', 'Endurance Z2', 90, '<145', 'Récup active. Vraiment facile.'),
+        S(5, 'tempo', i === 2 ? 'Over-under 3×(2/1 min)' : 'Tempo 2×20 min', 80, '155-170', i === 2 ? 'Alterne 2 min sous seuil / 1 min au-dessus.' : 'Tempo régulier sur le seuil bas.'),
+        S(0, 'long', `Sortie longue ${(b2[i] / 60).toFixed(1)}h`, b2[i], '<150', 'Finis les 20 dernières min plus appuyé (durabilité). Fuel 60-80 g glucides/h.'),
+    ] });
+    const b3 = [['Seuil 3×10 min', 'vo2', 'VO2 5×3 min', 180], ['Seuil 2×20 min', 'tempo', 'Over-under 4×(2/1)', 210], ['Seuil 3×12 min', 'vo2', 'VO2 5×4 min', 240]];
+    for (let i = 0; i < 3; i++) wks.push({ block: 'Bloc 3 — Le cap', theme: 'Seuil, allure-objectif, viser 200 W', sessions: [
+        S(2, 'threshold', b3[i][0], 80, '162-173', 'Au seuil (FC 162-173). Le cœur de ta progression vers 200 W.'),
+        S(3, 'easy', 'Endurance Z2', 75, '<145', 'Easy entre les grosses séances.'),
+        S(5, b3[i][1], b3[i][2], 70, b3[i][1] === 'vo2' ? '>173' : '160-173', 'Petite dose qui lève le plafond. RPE 9, la respiration confirme.'),
+        S(0, 'long', `Longue allure-objectif ${(b3[i][3] / 60).toFixed(1)}h`, b3[i][3], '150-160', 'Sur le plat, vise ton allure « 30 à l\'heure ». Le reste en Z2.'),
+    ] });
+    wks.push({ block: 'Repos', theme: 'Récup & supercompensation', sessions: [
+        S(2, 'easy', 'Récup active', 45, '<140', 'Tout doux, juste tourner les jambes.'),
+        S(4, 'easy', 'Endurance courte', 60, '<145', 'Garde un peu de fréquence pour ne pas désentraîner.'),
+        S(0, 'easy', 'Sortie plaisir', 75, '<145', 'Sans contrainte. Profite.'),
+    ] });
+    wks.push({ block: 'Repos', theme: 'Récup & supercompensation', sessions: [
+        S(2, 'easy', 'Récup active', 45, '<140', 'Léger.'),
+        S(5, 'opener', 'Réveil jambes 3×2 min', 50, 'jusqu\'à 170', 'Quelques accélérations courtes, puis easy. Tu ressors frais pour le cycle suivant.'),
+    ] });
+    return wks;
+}
+
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function programState() {
+    const start = new Date(PROGRAM_START + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.floor((today - start) / 86400000);
+    if (days < 0) return { started: false, daysToStart: -days };
+    return { started: true, weekIdx: Math.min(10, Math.floor(days / 7)), today };
+}
+function sessionDateStr(weekIdx, dow) {
+    const start = new Date(PROGRAM_START + 'T00:00:00');
+    const d = new Date(start);
+    d.setDate(start.getDate() + weekIdx * 7 + (dow === 0 ? 6 : dow - 1));
+    return ymd(d);
+}
+const SESS_TYPE = {
+    easy:     { c: '#00d4aa', l: 'Easy' },
+    long:     { c: '#00f19f', l: 'Longue' },
+    torque:   { c: '#ff8c42', l: 'Force' },
+    tempo:    { c: '#ffd700', l: 'Tempo' },
+    threshold:{ c: '#ff8c42', l: 'Seuil' },
+    vo2:      { c: '#ff4655', l: 'VO2' },
+    opener:   { c: '#4ea8de', l: 'Réveil' },
+};
+
+function renderDefis() {
+    const c = cyclingActs();
+    document.getElementById('xpBadge').textContent = '⚡ ' + totalXP().toLocaleString('fr-FR') + ' XP';
+    renderProgCard();
+    renderPowerCard(c);
+    renderBossList(c);
+    renderBadgeGrid(c);
+    renderProgWeek();
+    chartsRendered.defis = true;
+}
+
+function renderProgCard() {
+    const el = document.getElementById('progCard');
+    if (!el) return;
+    const prog = buildProgram();
+    const st = programState();
+    const thisWeekKey = weekKeyOf(new Date().toISOString().slice(0, 10));
+    const wxp = weekXP(thisWeekKey);
+    if (!st.started) {
+        el.innerHTML = `<div class="prog-head"><span class="prog-block">🚦 Départ lundi 15 juin</span><span class="prog-week-tag">J-${st.daysToStart}</span></div>
+            <div class="prog-theme">11 semaines · 3 blocs de charge + 2 de repos · cap : tenir 200 W plus longtemps</div>
+            <div class="prog-today neutral"><span class="prog-today-lbl">Première séance</span><span class="prog-today-title">Force-vélocité 4×5 min — gros braquet, FC 150-160</span></div>`;
+        return;
+    }
+    const wk = prog[st.weekIdx];
+    const todayStr = ymd(st.today);
+    const todaySess = wk.sessions.find(s => sessionDateStr(st.weekIdx, s.dow) === todayStr);
+    const pct = Math.round((st.weekIdx + 1) / prog.length * 100);
+    let todayHtml;
+    if (todaySess) {
+        const t = SESS_TYPE[todaySess.type] || { c: '#999' };
+        const done = cyclingActs().some(a => a.date === todayStr);
+        todayHtml = `<div class="prog-today" style="border-left-color:${t.c}">
+            <span class="prog-today-lbl">${done ? '✅ Séance du jour — faite' : '🎯 Séance du jour'}</span>
+            <span class="prog-today-title">${todaySess.title} · ${fmtMin(todaySess.dur)} · FC ${todaySess.hr}</span>
+            <span class="prog-today-desc">${todaySess.desc}</span></div>`;
+    } else {
+        todayHtml = `<div class="prog-today neutral"><span class="prog-today-lbl">Aujourd'hui</span><span class="prog-today-title">Repos ou récup active 🛌</span></div>`;
+    }
+    el.innerHTML = `<div class="prog-head"><span class="prog-block">${wk.block}</span><span class="prog-week-tag">Sem. ${st.weekIdx + 1}/11 · ${wxp} XP</span></div>
+        <div class="prog-theme">${wk.theme}</div>
+        <div class="prog-progress"><div class="prog-progress-fill" style="width:${pct}%"></div></div>
+        ${todayHtml}`;
+}
+
+function renderPowerCard(c) {
+    const el = document.getElementById('powerCard');
+    if (!el) return;
+    const long = c.filter(a => a.duration_min >= 180);
+    const punch = c.filter(a => a.duration_min >= 55);
+    const bestW = Math.round(maxOf(punch.map(a => estPower(a) || 0)));
+    const longAvg = long.length ? Math.round(long.slice(0, 8).reduce((s, a) => s + (estPower(a) || 0), 0) / Math.min(8, long.length)) : 0;
+    const pct = Math.min(100, longAvg / 200 * 100);
+    el.innerHTML = `<div class="power-row"><div class="power-stat"><span class="power-val">~${bestW}<small>W</small></span><span class="power-lbl">meilleur (1h+)</span></div>
+        <div class="power-stat"><span class="power-val">~${longAvg}<small>W</small></span><span class="power-lbl">sorties 3h+</span></div>
+        <div class="power-stat"><span class="power-val">${(bestW / 72).toFixed(1)}<small>W/kg</small></span><span class="power-lbl">pic estimé</span></div></div>
+        <div class="power-track"><div class="power-track-head"><span>Cap : 200 W tenus longtemps</span><span>${longAvg}/200 W</span></div>
+        <div class="power-bar"><div class="power-bar-fill" style="width:${pct}%"></div><div class="power-bar-goal"></div></div></div>
+        <div class="power-note">Estimé via physique (vitesse + D+ + 82 kg). ±10-15%, pour suivre la tendance.</div>`;
+}
+
+function renderBossList(c) {
+    const el = document.getElementById('bossList');
+    if (!el) return;
+    el.innerHTML = BOSSES.map(b => {
+        const r = b.compute(c);
+        const col = r.done ? COLORS.green : COLORS.orange;
+        return `<div class="boss-card ${r.done ? 'done' : ''}">
+            <div class="boss-top"><span class="boss-icon">${b.icon}</span>
+                <div class="boss-info"><span class="boss-name">${b.name}${r.done ? ' ✅' : ''}</span><span class="boss-target">${b.target}</span></div>
+                <span class="boss-pct" style="color:${col}">${Math.round(r.pct)}%</span></div>
+            <div class="boss-bar"><div class="boss-bar-fill" style="width:${r.pct}%;background:${col}"></div></div>
+            <span class="boss-best">${r.label}</span></div>`;
+    }).join('');
+}
+
+function renderBadgeGrid(c) {
+    const el = document.getElementById('badgeGrid');
+    if (!el) return;
+    el.innerHTML = BADGES.map(b => {
+        const done = b.done(c);
+        return `<div class="badge ${done ? 'unlocked' : 'locked'}">
+            <span class="badge-icon">${b.icon}</span>
+            <span class="badge-name">${b.name}</span>
+            <span class="badge-desc">${b.desc}</span>
+            <span class="badge-state">${done ? '✅ débloqué' : '🔒 ' + b.best(c)}</span></div>`;
+    }).join('');
+}
+
+function renderProgWeek() {
+    const el = document.getElementById('progWeek');
+    if (!el) return;
+    const prog = buildProgram();
+    const st = programState();
+    const idx = st.started ? st.weekIdx : 0;
+    const wk = prog[idx];
+    const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    el.innerHTML = wk.sessions.map(s => {
+        const t = SESS_TYPE[s.type] || { c: '#999', l: s.type };
+        const dStr = sessionDateStr(idx, s.dow);
+        const done = st.started && cyclingActs().some(a => a.date === dStr);
+        return `<div class="sess-row" style="border-left-color:${t.c}">
+            <div class="sess-day">${days[s.dow]}</div>
+            <div class="sess-main"><span class="sess-title">${s.title}${done ? ' ✅' : ''}</span>
+                <span class="sess-meta"><span class="sess-tag" style="background:${t.c}22;color:${t.c}">${t.l}</span> ${fmtMin(s.dur)} · FC ${s.hr}</span>
+                <span class="sess-desc">${s.desc}</span></div></div>`;
+    }).join('');
 }
 
 // ════════════════════════════════════════════

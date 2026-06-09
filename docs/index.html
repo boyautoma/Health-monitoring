@@ -6,7 +6,7 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609e">
+    <link rel="stylesheet" href="css/style.css?v=20260609f">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
 </head>
@@ -347,6 +347,33 @@
             <div class="chart-card"><div class="chart-title" id="sleepChartTitle">Score sommeil — 7 jours</div><div class="chart-wrap"><canvas id="sleepChart"></canvas></div></div>
         </section>
 
+        <!-- ════════════ DÉFIS ════════════ -->
+        <section class="page" id="pageDefis">
+            <div class="section-header">
+                <h2>🎯 Défis</h2>
+                <span class="section-date" id="xpBadge">--</span>
+            </div>
+
+            <!-- Programme : séance du jour + bloc -->
+            <div class="prog-card" id="progCard"></div>
+
+            <!-- 200W durability tracker -->
+            <div class="block-title">Puissance estimée</div>
+            <div class="power-card" id="powerCard"></div>
+
+            <!-- Boss fights -->
+            <div class="block-title">Les 3 boss</div>
+            <div class="boss-list" id="bossList"></div>
+
+            <!-- Badges -->
+            <div class="block-title">Badges</div>
+            <div class="badge-grid" id="badgeGrid"></div>
+
+            <!-- Cette semaine du programme -->
+            <div class="block-title">Programme — cette semaine</div>
+            <div class="prog-week" id="progWeek"></div>
+        </section>
+
     </main>
 
     <!-- Bottom Navigation -->
@@ -366,6 +393,10 @@
         <button class="nav-btn" data-page="pageRecup">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span>Récup</span>
+        </button>
+        <button class="nav-btn" data-page="pageDefis">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+            <span>Défis</span>
         </button>
     </nav>
 
@@ -388,6 +419,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609e"></script>
+    <script src="js/app.js?v=20260609f"></script>
 </body>
 </html>
