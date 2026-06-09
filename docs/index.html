@@ -6,9 +6,9 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609b">
+    <link rel="stylesheet" href="css/style.css?v=20260609c">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
 </head>
 <body>
     <!-- Login Screen -->
@@ -41,11 +41,191 @@
         </div>
     </header>
 
-    <!-- Sections -->
     <main>
 
-        <!-- ===== RECOVERY ===== -->
-        <section class="page active" id="pageRecovery">
+        <!-- ════════════ GLOBAL ════════════ -->
+        <section class="page active" id="pageGlobal">
+            <div class="section-header">
+                <h2>Aujourd'hui</h2>
+                <span class="section-date" id="globalDate">--</span>
+            </div>
+
+            <!-- Readiness summary -->
+            <div class="ready-card" id="readyCard">
+                <div class="ready-ring-wrap">
+                    <svg class="ready-ring" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="9"/>
+                        <circle class="ready-arc" id="gReadyArc" cx="60" cy="60" r="50" fill="none"
+                                stroke="#00f19f" stroke-width="9" stroke-linecap="round"
+                                stroke-dasharray="314.16" stroke-dashoffset="314.16"
+                                transform="rotate(-90 60 60)"/>
+                    </svg>
+                    <div class="ready-center">
+                        <span class="ready-value" id="gReadyScore">--</span>
+                        <span class="ready-max">/100</span>
+                    </div>
+                </div>
+                <div class="ready-info">
+                    <span class="ready-label">TRAINING READINESS</span>
+                    <span class="ready-level" id="gReadyLevel">--</span>
+                    <span class="ready-feedback" id="gReadyFeedback">--</span>
+                    <span class="ready-time" id="gReadyTime"></span>
+                </div>
+            </div>
+
+            <!-- Conseil du jour -->
+            <div class="advice-card" id="gAdvice"></div>
+
+            <!-- Quick metrics -->
+            <div class="quick-grid">
+                <div class="quick-tile"><span class="quick-val" id="gHrv">--</span><span class="quick-lbl">HRV nuit</span><span class="quick-sub" id="gHrvStatus">--</span></div>
+                <div class="quick-tile"><span class="quick-val" id="gSleep">--</span><span class="quick-lbl">Sommeil</span><span class="quick-sub">/100</span></div>
+                <div class="quick-tile"><span class="quick-val" id="gRhr">--</span><span class="quick-lbl">FC repos</span><span class="quick-sub">bpm</span></div>
+                <div class="quick-tile"><span class="quick-val" id="gStress">--</span><span class="quick-lbl">Stress</span><span class="quick-sub">/100</span></div>
+            </div>
+
+            <!-- This week's load -->
+            <div class="block-title">Cette semaine</div>
+            <div class="week-strip" id="globalWeek"></div>
+
+            <!-- Last activity -->
+            <div class="block-title">Dernière séance</div>
+            <div class="activities-feed" id="globalLastAct"></div>
+
+            <!-- Aerobic form -->
+            <div class="block-title">Forme aérobie</div>
+            <div class="ref-strip">
+                <div class="ref-item"><span class="ref-label">VO2max</span><span class="ref-val" id="gVo2">--</span></div>
+                <div class="ref-sep"></div>
+                <div class="ref-item"><span class="ref-label">VMA</span><span class="ref-val" id="gVma">--</span><span class="ref-unit">km/h</span></div>
+                <div class="ref-sep"></div>
+                <div class="ref-item"><span class="ref-label">VDOT</span><span class="ref-val" id="gVdot">--</span></div>
+            </div>
+        </section>
+
+        <!-- ════════════ VÉLO ════════════ -->
+        <section class="page" id="pageVelo">
+            <div class="section-header">
+                <h2>🚴 Vélo</h2>
+                <span class="section-date" id="veloWeekLabel">cette semaine</span>
+            </div>
+
+            <!-- Week stats tiles -->
+            <div class="sport-stats">
+                <div class="stat-tile"><span class="stat-tile-val" id="veloKm">--</span><span class="stat-tile-lbl">km</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="veloH">--</span><span class="stat-tile-lbl">durée</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="veloDplus">--</span><span class="stat-tile-lbl">m D+</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="veloCount">--</span><span class="stat-tile-lbl">sorties</span></div>
+            </div>
+
+            <!-- Volume chart -->
+            <div class="vol-card">
+                <div class="vol-header">
+                    <span class="vol-title">Volume — 16 semaines</span>
+                    <span class="vol-total" id="veloVolTotal">--</span>
+                </div>
+                <div class="chart-wrap"><canvas id="veloVolChart"></canvas></div>
+            </div>
+
+            <!-- Intensity zone distribution -->
+            <div class="zone-card">
+                <div class="zone-header">
+                    <span class="zone-title">Répartition d'intensité <small>(8 sem)</small></span>
+                    <span class="zone-poltag" id="veloPolar">--</span>
+                </div>
+                <div class="zone-bar" id="veloZoneBar"></div>
+                <div class="zone-legend" id="veloZoneLegend"></div>
+                <div class="zone-note" id="veloZoneNote"></div>
+            </div>
+
+            <!-- Cycling load (ACWR) -->
+            <div class="load-banner" id="veloLoadBanner">
+                <div class="load-banner-top">
+                    <div class="load-banner-left">
+                        <span class="load-acwr-value" id="veloAcwr">--</span>
+                        <span class="load-acwr-label">ACWR vélo</span>
+                    </div>
+                    <div class="load-banner-right">
+                        <span class="load-status" id="veloAcwrStatus">--</span>
+                        <div class="load-stress-line">
+                            <span class="load-stress-num" id="veloStress">--</span>
+                            <span class="load-stress-unit">charge/sem</span>
+                            <span class="load-stress-trend" id="veloStressTrend"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="load-gauge-wrap">
+                    <div class="load-gauge-bg">
+                        <div class="acwr-zone danger-low"></div><div class="acwr-zone warn-low"></div>
+                        <div class="acwr-zone safe"></div><div class="acwr-zone warn-high"></div>
+                        <div class="acwr-zone danger-high"></div>
+                    </div>
+                    <div class="acwr-marker" id="veloMarker"></div>
+                </div>
+            </div>
+
+            <!-- Recent rides -->
+            <div class="activities-feed" id="veloFeed">
+                <div class="feed-header"><span class="feed-title">Sorties récentes</span><span class="feed-count" id="veloFeedCount"></span></div>
+            </div>
+        </section>
+
+        <!-- ════════════ COURSE ════════════ -->
+        <section class="page" id="pageCourse">
+            <div class="section-header">
+                <h2>🏃 Course</h2>
+                <span class="section-date" id="courseWeekLabel">cette semaine</span>
+            </div>
+
+            <!-- Aerobic form -->
+            <div class="ref-strip">
+                <div class="ref-item"><span class="ref-label">VO2max</span><span class="ref-val" id="courseVo2">--</span></div>
+                <div class="ref-sep"></div>
+                <div class="ref-item"><span class="ref-label">VMA</span><span class="ref-val" id="courseVma">--</span><span class="ref-unit">km/h</span></div>
+                <div class="ref-sep"></div>
+                <div class="ref-item"><span class="ref-label">VDOT</span><span class="ref-val" id="courseVdot">--</span></div>
+            </div>
+            <div class="ref-source" id="courseRefSource"></div>
+
+            <!-- Week stats tiles -->
+            <div class="sport-stats">
+                <div class="stat-tile"><span class="stat-tile-val" id="courseKm">--</span><span class="stat-tile-lbl">km</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="courseH">--</span><span class="stat-tile-lbl">durée</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="courseDplus">--</span><span class="stat-tile-lbl">m D+</span></div>
+                <div class="stat-tile"><span class="stat-tile-val" id="courseCount">--</span><span class="stat-tile-lbl">sorties</span></div>
+            </div>
+
+            <!-- Volume chart -->
+            <div class="vol-card">
+                <div class="vol-header">
+                    <span class="vol-title">Volume — 16 semaines</span>
+                    <span class="vol-total" id="courseVolTotal">--</span>
+                </div>
+                <div class="chart-wrap"><canvas id="courseVolChart"></canvas></div>
+            </div>
+
+            <!-- Intensity zone distribution -->
+            <div class="zone-card">
+                <div class="zone-header">
+                    <span class="zone-title">Répartition d'intensité <small>(8 sem)</small></span>
+                    <span class="zone-poltag" id="coursePolar">--</span>
+                </div>
+                <div class="zone-bar" id="courseZoneBar"></div>
+                <div class="zone-legend" id="courseZoneLegend"></div>
+                <div class="zone-note" id="courseZoneNote"></div>
+            </div>
+
+            <!-- Strength reminder (periostitis prevention) -->
+            <div class="advice-card" id="courseStrength"></div>
+
+            <!-- Recent runs -->
+            <div class="activities-feed" id="courseFeed">
+                <div class="feed-header"><span class="feed-title">Courses récentes</span><span class="feed-count" id="courseFeedCount"></span></div>
+            </div>
+        </section>
+
+        <!-- ════════════ RÉCUP ════════════ -->
+        <section class="page" id="pageRecup">
             <div class="hero">
                 <div class="hero-date" id="heroDate">--</div>
                 <div class="hero-ring-wrap">
@@ -61,126 +241,88 @@
                         <span class="hero-pct">%</span>
                     </div>
                 </div>
-                <div class="hero-label">RECOVERY</div>
+                <div class="hero-label">READINESS</div>
                 <div class="hero-status" id="heroStatus">--</div>
             </div>
 
-            <!-- Metric cards 2x2 -->
             <div class="metrics-grid">
                 <div class="metric-card" data-metric="hrv">
                     <div class="metric-ring-wrap">
                         <svg class="metric-ring" viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
-                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
-                                    stroke="#00d4aa" stroke-width="5" stroke-linecap="round"
-                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
-                                    transform="rotate(-90 32 32)" id="hrvArc"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none" stroke="#00d4aa" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" transform="rotate(-90 32 32)" id="hrvArc"/>
                         </svg>
                         <span class="metric-ring-val" id="hrvVal">--</span>
                     </div>
-                    <div class="metric-info">
-                        <span class="metric-label">HRV</span>
-                        <span class="metric-sub" id="hrvSub">moy. 7j</span>
-                    </div>
+                    <div class="metric-info"><span class="metric-label">HRV</span><span class="metric-sub" id="hrvSub">moy. 7j</span></div>
                 </div>
                 <div class="metric-card" data-metric="rhr">
                     <div class="metric-ring-wrap">
                         <svg class="metric-ring" viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
-                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
-                                    stroke="#ff8c42" stroke-width="5" stroke-linecap="round"
-                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
-                                    transform="rotate(-90 32 32)" id="rhrArc"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none" stroke="#ff8c42" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" transform="rotate(-90 32 32)" id="rhrArc"/>
                         </svg>
                         <span class="metric-ring-val" id="rhrVal">--</span>
                     </div>
-                    <div class="metric-info">
-                        <span class="metric-label">FC REPOS</span>
-                        <span class="metric-sub">bpm</span>
-                    </div>
+                    <div class="metric-info"><span class="metric-label">FC REPOS</span><span class="metric-sub">bpm</span></div>
                 </div>
                 <div class="metric-card" data-metric="sleep">
                     <div class="metric-ring-wrap">
                         <svg class="metric-ring" viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
-                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
-                                    stroke="#7c5cfc" stroke-width="5" stroke-linecap="round"
-                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
-                                    transform="rotate(-90 32 32)" id="sleepArc"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none" stroke="#7c5cfc" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" transform="rotate(-90 32 32)" id="sleepArc"/>
                         </svg>
                         <span class="metric-ring-val" id="sleepVal">--</span>
                     </div>
-                    <div class="metric-info">
-                        <span class="metric-label">SOMMEIL</span>
-                        <span class="metric-sub" id="sleepSub">/100</span>
-                    </div>
+                    <div class="metric-info"><span class="metric-label">SOMMEIL</span><span class="metric-sub" id="sleepSub">/100</span></div>
                 </div>
                 <div class="metric-card" data-metric="stress">
                     <div class="metric-ring-wrap">
                         <svg class="metric-ring" viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
-                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none"
-                                    stroke="#ff4655" stroke-width="5" stroke-linecap="round"
-                                    stroke-dasharray="163.36" stroke-dashoffset="163.36"
-                                    transform="rotate(-90 32 32)" id="stressArc"/>
+                            <circle class="metric-arc" cx="32" cy="32" r="26" fill="none" stroke="#ff4655" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" transform="rotate(-90 32 32)" id="stressArc"/>
                         </svg>
                         <span class="metric-ring-val" id="stressVal">--</span>
                     </div>
-                    <div class="metric-info">
-                        <span class="metric-label">STRESS</span>
-                        <span class="metric-sub">/100</span>
-                    </div>
+                    <div class="metric-info"><span class="metric-label">STRESS</span><span class="metric-sub">/100</span></div>
                 </div>
             </div>
 
-            <!-- Training readiness + VO2max -->
             <div class="stats-row">
-                <div class="stat-pill">
-                    <span class="stat-label">Récup restante</span>
-                    <span class="stat-value" id="readinessVal">--</span>
-                </div>
-                <div class="stat-pill">
-                    <span class="stat-label">VO2max</span>
-                    <span class="stat-value" id="vo2Val">--</span>
-                </div>
-                <div class="stat-pill">
-                    <span class="stat-label">VMA</span>
-                    <span class="stat-value" id="vmaVal">--</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- ===== SLEEP ===== -->
-        <section class="page" id="pageSleep">
-            <div class="section-header">
-                <h2>Sommeil</h2>
-                <span class="section-date" id="sleepDate">--</span>
+                <div class="stat-pill"><span class="stat-label">Récup restante</span><span class="stat-value" id="readinessVal">--</span></div>
+                <div class="stat-pill"><span class="stat-label">HRV 7j</span><span class="stat-value" id="hrv7Val">--</span></div>
+                <div class="stat-pill"><span class="stat-label">Sommeil</span><span class="stat-value" id="sleepDurVal">--</span></div>
             </div>
 
+            <!-- Range pills -->
+            <div class="range-pills" id="trendsRangePills">
+                <button class="pill active" data-days="7">7j</button>
+                <button class="pill" data-days="30">30j</button>
+                <button class="pill" data-days="90">90j</button>
+                <button class="pill" data-days="0">Tout</button>
+            </div>
+
+            <div class="chart-card"><div class="chart-title">Readiness <small>(Garmin)</small></div><div class="chart-wrap"><canvas id="recovChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">HRV <small>moy. 7j (ms)</small></div><div class="chart-wrap"><canvas id="hrvChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">FC repos <small>(bpm)</small></div><div class="chart-wrap"><canvas id="rhrChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-title">Stress</div><div class="chart-wrap"><canvas id="stressChart"></canvas></div></div>
+
+            <!-- Sleep block -->
+            <div class="block-title">Sommeil</div>
             <div class="sleep-hero">
                 <div class="sleep-ring-wrap">
                     <svg class="sleep-ring" viewBox="0 0 160 160">
                         <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="8"/>
-                        <circle class="sleep-hero-arc" id="sleepHeroArc" cx="80" cy="80" r="68" fill="none"
-                                stroke="#7c5cfc" stroke-width="8" stroke-linecap="round"
-                                stroke-dasharray="427.26" stroke-dashoffset="427.26"
-                                transform="rotate(-90 80 80)"/>
+                        <circle class="sleep-hero-arc" id="sleepHeroArc" cx="80" cy="80" r="68" fill="none" stroke="#7c5cfc" stroke-width="8" stroke-linecap="round" stroke-dasharray="427.26" stroke-dashoffset="427.26" transform="rotate(-90 80 80)"/>
                     </svg>
-                    <div class="sleep-center">
-                        <span class="sleep-score" id="sleepScore">--</span>
-                        <span class="sleep-score-label">SCORE</span>
-                    </div>
+                    <div class="sleep-center"><span class="sleep-score" id="sleepScore">--</span><span class="sleep-score-label">SCORE</span></div>
                 </div>
                 <div class="sleep-duration" id="sleepDuration">--</div>
             </div>
-
-            <!-- Sleep stages -->
             <div class="sleep-stages-wrap">
                 <div class="sleep-bar" id="sleepBar">
-                    <div class="sleep-seg deep" id="segDeep"></div>
-                    <div class="sleep-seg light" id="segLight"></div>
-                    <div class="sleep-seg rem" id="segRem"></div>
-                    <div class="sleep-seg awake" id="segAwake"></div>
+                    <div class="sleep-seg deep" id="segDeep"></div><div class="sleep-seg light" id="segLight"></div>
+                    <div class="sleep-seg rem" id="segRem"></div><div class="sleep-seg awake" id="segAwake"></div>
                 </div>
                 <div class="sleep-legend">
                     <div class="legend-item"><span class="dot deep"></span>Profond<span class="legend-val" id="legDeep">--</span></div>
@@ -189,159 +331,29 @@
                     <div class="legend-item"><span class="dot awake"></span>&Eacute;veil<span class="legend-val" id="legAwake">--</span></div>
                 </div>
             </div>
-
-            <!-- Sleep Insights -->
             <div class="sleep-insights" id="sleepInsights"></div>
-
-            <!-- Sleep date range pills -->
-            <div class="range-pills" id="sleepRangePills">
-                <button class="pill active" data-days="7">7j</button>
-                <button class="pill" data-days="30">30j</button>
-                <button class="pill" data-days="90">90j</button>
-            </div>
-
-            <!-- Sleep trend chart -->
-            <div class="chart-card">
-                <div class="chart-title" id="sleepChartTitle">Score sommeil — 7 jours</div>
-                <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
-            </div>
-
-            <!-- Sleep history detail -->
-            <div class="sleep-history" id="sleepHistory">
-                <div class="sleep-history-title">Historique par nuit</div>
-            </div>
-        </section>
-
-        <!-- ===== PERFORMANCE ===== -->
-        <section class="page" id="pagePerf">
-
-            <!-- Volume Chart with sport toggles -->
-            <div class="vol-card">
-                <div class="vol-header">
-                    <span class="vol-title">Volume</span>
-                    <span class="vol-total" id="volTotal">--</span>
-                </div>
-                <div class="vol-toggles" id="volToggles">
-                    <button class="vol-tog active" data-sport="running"><span class="vol-tog-dot running"></span>Course</button>
-                    <button class="vol-tog active" data-sport="walking"><span class="vol-tog-dot walking"></span>Marche</button>
-                    <button class="vol-tog active" data-sport="cycling"><span class="vol-tog-dot cycling"></span>V&eacute;lo</button>
-                </div>
-                <div class="chart-wrap"><canvas id="volumeChart"></canvas></div>
-            </div>
-
-            <!-- Training Load Banner -->
-            <div class="load-banner" id="loadBanner">
-                <div class="load-banner-top">
-                    <div class="load-banner-left">
-                        <span class="load-acwr-value" id="acwrValue">--</span>
-                        <span class="load-acwr-label">ACWR</span>
-                    </div>
-                    <div class="load-banner-right">
-                        <span class="load-status" id="acwrStatus">--</span>
-                        <div class="load-stress-line">
-                            <span class="load-stress-num" id="mechStressVal">--</span>
-                            <span class="load-stress-unit">charge/sem</span>
-                            <span class="load-stress-trend" id="mechStressTrend"></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="load-gauge-wrap">
-                    <div class="load-gauge-bg">
-                        <div class="acwr-zone danger-low"></div>
-                        <div class="acwr-zone warn-low"></div>
-                        <div class="acwr-zone safe"></div>
-                        <div class="acwr-zone warn-high"></div>
-                        <div class="acwr-zone danger-high"></div>
-                    </div>
-                    <div class="acwr-marker" id="acwrMarker"></div>
-                </div>
-            </div>
-
-            <!-- VO2max / VMA / VDOT -->
-            <div class="ref-strip">
-                <div class="ref-item">
-                    <span class="ref-label">VO2max</span>
-                    <span class="ref-val" id="perfVo2">--</span>
-                </div>
-                <div class="ref-sep"></div>
-                <div class="ref-item">
-                    <span class="ref-label">VMA</span>
-                    <span class="ref-val" id="perfVma">--</span>
-                    <span class="ref-unit">km/h</span>
-                </div>
-                <div class="ref-sep"></div>
-                <div class="ref-item">
-                    <span class="ref-label">VDOT</span>
-                    <span class="ref-val" id="perfVdot">--</span>
-                </div>
-            </div>
-            <div class="ref-source" id="refSource"></div>
-
-            <!-- Weekly Snapshot -->
-            <div class="week-strip" id="weeklyRecap"></div>
-
-            <!-- Activities Feed -->
-            <div class="activities-feed" id="activitiesList">
-                <div class="feed-header">
-                    <span class="feed-title">Activit&eacute;s</span>
-                    <span class="feed-count" id="actCount"></span>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- ===== TRENDS ===== -->
-        <section class="page" id="pageTrends">
-            <div class="section-header">
-                <h2>Tendances</h2>
-                <span class="section-sub" id="trendsRangeLabel">7 derniers jours</span>
-            </div>
-
-            <!-- Date range pills -->
-            <div class="range-pills" id="trendsRangePills">
-                <button class="pill active" data-days="7">7j</button>
-                <button class="pill" data-days="30">30j</button>
-                <button class="pill" data-days="90">90j</button>
-                <button class="pill" data-days="0">Tout</button>
-            </div>
-
-            <div class="chart-card">
-                <div class="chart-title">R&eacute;cup&eacute;ration</div>
-                <div class="chart-wrap"><canvas id="recovChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title">HRV <small>moy. 7j (ms)</small></div>
-                <div class="chart-wrap"><canvas id="hrvChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title">FC repos <small>(bpm)</small></div>
-                <div class="chart-wrap"><canvas id="rhrChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-title">Stress</div>
-                <div class="chart-wrap"><canvas id="stressChart"></canvas></div>
-            </div>
+            <div class="chart-card"><div class="chart-title" id="sleepChartTitle">Score sommeil — 7 jours</div><div class="chart-wrap"><canvas id="sleepChart"></canvas></div></div>
         </section>
 
     </main>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
-        <button class="nav-btn active" data-page="pageRecovery">
+        <button class="nav-btn active" data-page="pageGlobal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>Global</span>
+        </button>
+        <button class="nav-btn" data-page="pageVelo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3.5 11.5L9 9l3 0 2.5 4.5M6 9h4"/></svg>
+            <span>Vélo</span>
+        </button>
+        <button class="nav-btn" data-page="pageCourse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="1.5"/><path d="M7 21l3-5 2-3-1-4-3 2-2 3m6-1l3 2 1 4m-4-9l4-1 3 2"/></svg>
+            <span>Course</span>
+        </button>
+        <button class="nav-btn" data-page="pageRecup">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span>Recovery</span>
-        </button>
-        <button class="nav-btn" data-page="pageSleep">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <span>Sommeil</span>
-        </button>
-        <button class="nav-btn" data-page="pagePerf">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <span>Perf</span>
-        </button>
-        <button class="nav-btn" data-page="pageTrends">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-            <span>Trends</span>
+            <span>Récup</span>
         </button>
     </nav>
 
@@ -351,11 +363,7 @@
         const ls = document.getElementById('loginScreen');
         const form = document.getElementById('loginForm');
         const err = document.getElementById('loginError');
-
-        if (sessionStorage.getItem('auth') === HASH) {
-            ls.classList.add('hidden');
-        }
-
+        if (sessionStorage.getItem('auth') === HASH) ls.classList.add('hidden');
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
             const u = document.getElementById('loginUser').value;
@@ -363,16 +371,11 @@
             const data = new TextEncoder().encode(u + ':' + p);
             const buf = await crypto.subtle.digest('SHA-256', data);
             const h = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-            if (h === HASH) {
-                sessionStorage.setItem('auth', HASH);
-                ls.classList.add('hidden');
-            } else {
-                err.textContent = 'Identifiants incorrects';
-                document.getElementById('loginPass').value = '';
-            }
+            if (h === HASH) { sessionStorage.setItem('auth', HASH); ls.classList.add('hidden'); }
+            else { err.textContent = 'Identifiants incorrects'; document.getElementById('loginPass').value = ''; }
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609b"></script>
+    <script src="js/app.js?v=20260609c"></script>
 </body>
 </html>

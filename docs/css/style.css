@@ -889,3 +889,89 @@ main {
 @media (min-width: 768px) {
     main { max-width: 560px; }
 }
+
+/* ════════════ NEW: 4-dashboard components ════════════ */
+
+/* Block titles between sections */
+.block-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-2);
+    margin: 22px 4px 10px;
+}
+
+/* ── Global: Readiness summary card ── */
+.ready-card {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px 20px; margin-bottom: 14px;
+}
+.ready-ring-wrap { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+.ready-ring { width: 96px; height: 96px; }
+.ready-arc { transition: stroke-dashoffset .8s ease, stroke .3s; }
+.ready-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ready-value { font-size: 30px; font-weight: 800; line-height: 1; }
+.ready-max { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.ready-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ready-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--text-3); }
+.ready-level { font-size: 18px; font-weight: 800; }
+.ready-feedback { font-size: 13px; color: var(--text-2); }
+.ready-time { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+/* ── Advice card ── */
+.advice-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left-width: 3px; border-radius: 14px; padding: 14px 16px; margin-bottom: 14px;
+}
+.advice-card.good   { border-left-color: var(--green); }
+.advice-card.warn   { border-left-color: var(--orange); }
+.advice-card.danger { border-left-color: var(--red); }
+.advice-card.neutral{ border-left-color: var(--text-3); }
+.advice-icon { font-size: 20px; line-height: 1.2; }
+.advice-body { display: flex; flex-direction: column; gap: 3px; }
+.advice-title { font-size: 14px; font-weight: 700; }
+.advice-msg { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+
+/* ── Quick metric tiles (global) ── */
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+.quick-tile {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 6px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.quick-val { font-size: 22px; font-weight: 800; }
+.quick-lbl { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
+.quick-sub { font-size: 10px; color: var(--text-3); }
+
+/* ── Sport stat tiles (vélo/course) ── */
+.sport-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat-tile {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 6px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.stat-tile-val { font-size: 20px; font-weight: 800; }
+.stat-tile-lbl { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ── Zone distribution card ── */
+.zone-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 16px 18px; margin-bottom: 14px;
+}
+.zone-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.zone-title { font-size: 14px; font-weight: 700; }
+.zone-title small { color: var(--text-3); font-weight: 500; }
+.zone-poltag { font-size: 13px; font-weight: 800; }
+.zone-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-card-alt); margin-bottom: 14px; }
+.zone-seg { height: 100%; transition: width .6s ease; }
+.zone-legend { display: flex; flex-direction: column; gap: 7px; }
+.zone-leg-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.zone-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.zone-leg-name { color: var(--text); flex: 1; }
+.zone-leg-pct { font-weight: 700; min-width: 36px; text-align: right; }
+.zone-leg-min { color: var(--text-3); min-width: 50px; text-align: right; }
+.zone-note { font-size: 12px; line-height: 1.4; margin-top: 12px; }
+.zone-empty { color: var(--text-3); font-size: 13px; }
+
+/* ── Activity HR badge in feed rows ── */
+.activity-hr { color: var(--text-2); }
