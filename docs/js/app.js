@@ -353,8 +353,22 @@ function renderVerdict(rec) {
     if (!el) return;
     const r = rec.garmin_readiness;
     const ph = currentPhaseInfo();
+    const now = new Date();
+    const todayStr = ymd(now);
+    const todayRide = (DATA.activities || []).find(a => a.type === 'cycling' && a.date === todayStr);
+    const evening = now.getHours() >= 20;
     let cls, icon, title, sess;
-    if (r == null)      { cls = 'neutral'; icon = '🚴'; title = 'Roule au feeling';   sess = 'Pas de readiness aujourd\'hui — fie-toi aux jambes. ' + phaseSuggestion(ph, false); }
+    if (todayRide) {
+        // Already ridden today -> recap + recovery guidance, no session suggestion
+        const k = classifyRide(todayRide);
+        cls = 'good'; icon = '✅'; title = 'Séance du jour faite';
+        if (k && k.key === 'punchy')      sess = 'Punchy encaissé — bien joué. Maintenant : mange, hydrate, dors. Demain : easy ou repos.';
+        else if (k && (k.key === 'hard')) sess = 'Grosse séance dans les jambes. Récupère à fond — demain easy ou repos.';
+        else if (k && k.key === 'tempo')  sess = 'Sortie tempo faite. Demain, vise du vrai easy pour absorber.';
+        else                              sess = 'Sortie easy au compteur — la base se construit. Demain : au feeling.';
+    }
+    else if (evening) { cls = 'neutral'; icon = '🌙'; title = 'Journée sans vélo — ça arrive'; sess = 'Trop tard pour rouler. Demain : ' + phaseSuggestion(ph, r != null && r >= 65).toLowerCase(); }
+    else if (r == null)      { cls = 'neutral'; icon = '🚴'; title = 'Roule au feeling';   sess = 'Pas de readiness aujourd\'hui — fie-toi aux jambes. ' + phaseSuggestion(ph, false); }
     else if (r >= 65)   { cls = 'good';    icon = '🟢'; title = 'Feu vert';           sess = phaseSuggestion(ph, true); }
     else if (r >= 40)   { cls = 'warn';    icon = '🟡'; title = 'Jour tranquille';    sess = phaseSuggestion(ph, false); }
     else                { cls = 'danger';  icon = '🔴'; title = 'Récupération';       sess = 'Repos, ou 30-45 min très facile pour dérouiller. Écourter = intelligent.'; }
