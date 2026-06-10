@@ -33,6 +33,13 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "dat
 # Backfill window for first run (days)
 BACKFILL_DAYS = 90
 
+# FAST mode (daily sync): only fetch last night + yesterday, no 90-day backfill.
+# Far fewer API calls -> ~10-20s instead of minutes, and much less 429 risk.
+# Enable with: SYNC_FAST=1  or  `python sync_garmin.py --fast`
+FAST = os.environ.get("SYNC_FAST") == "1" or "--fast" in sys.argv
+FAST_BACKFILL_DAYS = 2      # today is always fetched; this adds yesterday + day before
+FAST_ACT_DAYS = 7           # activities window in fast mode
+
 
 def _save_tokens(client):
     try:
@@ -388,8 +395,9 @@ def main():
     # This gradually backfills history (readiness/stress/hrv_last_night) over
     # several runs without hammering Garmin's API (avoids 429 rate-limit).
     upgrade_count = 0
-    UPGRADE_MAX = 14
-    for i in range(1, BACKFILL_DAYS + 1):
+    UPGRADE_MAX = 0 if FAST else 14   # no slow re-fetch of old days in fast mode
+    backfill_window = FAST_BACKFILL_DAYS if FAST else BACKFILL_DAYS
+    for i in range(1, backfill_window + 1):
         d = today - timedelta(days=i)
         d_str = d.strftime("%Y-%m-%d")
         existing = history_map.get(d_str)
@@ -429,8 +437,8 @@ def main():
         key = a.get("activityId") or f"{a.get('date')}_{a.get('name')}"
         act_map[key] = a
 
-    # Always fetch full BACKFILL_DAYS window (upsert by activityId ensures no dupes)
-    start_dt = today - timedelta(days=BACKFILL_DAYS)
+    # Activities window (upsert by activityId ensures no dupes either way)
+    start_dt = today - timedelta(days=FAST_ACT_DAYS if FAST else BACKFILL_DAYS)
 
     # Fetch ALL activity types (no activitytype filter)
     raw = safe_call(
