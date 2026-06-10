@@ -268,8 +268,14 @@ function activityRowHTML(a) {
     if (a.duration_min) subs.push(fmtMin(Math.round(a.duration_min)));
     if (a.hr_drift_pct != null) subs.push(`dérive ${a.hr_drift_pct > 0 ? '+' : ''}${a.hr_drift_pct}%`);
     const sub = subs.length ? `<div class="act-sub">${subs.join(' · ')}</div>` : '';
+    // Session-type chip (cycling): uses anaerobic TE so punchy rides aren't mislabeled "easy"
+    let typeChip = '';
+    if (type === 'cycling') {
+        const k = classifyRide(a);
+        if (k) typeChip = `<span class="act-type" style="background:${k.color}22;color:${k.color}">${k.label}</span>`;
+    }
     return `<div class="activity-row type-${cls}">
-        <div class="act-head"><span class="act-date">${icon} ${fmtDayFull(a.date)}</span>${badge}</div>
+        <div class="act-head"><span class="act-date">${icon} ${fmtDayFull(a.date)}</span><span class="act-head-right">${typeChip}${badge}</span></div>
         <div class="act-metrics">${metrics}</div>${sub}</div>`;
 }
 
@@ -372,16 +378,35 @@ function renderVerdict(rec) {
         <div class="verdict-metrics">${metrics.map(m => `<span class="vm"><span class="vm-lbl">${m[0]}</span><b style="color:${m[2]}">${m[1]}</b></span>`).join('')}</div>`;
 }
 
+// Classify a ride using avg HR *and* Garmin's anaerobic Training Effect.
+// Avg HR alone can't tell a punchy ride (max efforts + easy recovery)
+// from steady endurance — the anaerobic TE can.
+function classifyRide(a) {
+    if (!a || !a.avg_hr) return null;
+    const hr = Math.round(a.avg_hr);
+    const ana = a.training_effect_anaerobic || 0;
+    if (ana >= 2)   return { key: 'punchy', label: '⚡ Punchy', color: COLORS.orange, hr, ana };
+    if (hr >= 163)  return { key: 'hard',   label: '🔥 Dur',    color: COLORS.red,    hr, ana };
+    if (hr >= 155)  return { key: 'tempo',  label: '🟡 Tempo',  color: COLORS.gold,   hr, ana };
+    return            { key: 'easy',   label: '🟢 Easy',   color: COLORS.green,  hr, ana };
+}
+
 // Coaching verdict on the last ride (80/20 compliance + durability)
 function renderRideVerdict(a) {
     const el = document.getElementById('rideVerdict');
     if (!el) return;
-    if (!a || a.type !== 'cycling' || !a.avg_hr) { el.className = ''; el.innerHTML = ''; return; }
-    const hr = Math.round(a.avg_hr);
+    const c = classifyRide(a);
+    if (!c || a.type !== 'cycling') { el.className = ''; el.innerHTML = ''; return; }
     let cls, icon, t, msg;
-    if (hr < 155)      { cls = 'good';   icon = '✅'; t = 'Vraie sortie easy (FC ' + hr + ')'; msg = 'Exactement ce qui construit ta base — bonus XP +30%.'; }
-    else if (hr < 163) { cls = 'warn';   icon = '⚠️'; t = 'Sortie tempo (FC ' + hr + ')';      msg = 'Si c\'était censé être easy, c\'était trop dur. La prochaine : tu peux papoter tout du long.'; }
-    else               { cls = 'danger'; icon = '🔥'; t = 'Grosse séance (FC ' + hr + ')';     msg = 'Bien si c\'était voulu — prévois 1-2 jours faciles derrière.'; }
+    if (c.key === 'punchy') {
+        if (c.hr < 155) { cls = 'good'; icon = '⚡'; t = `Punchy bien exécuté (anaérobie ${c.ana.toFixed(1)}/5)`;
+            msg = `Efforts francs dans les bosses + vraie récup entre (FC moy ${c.hr}) — exactement le format. Prévois du easy derrière.`; }
+        else { cls = 'warn'; icon = '⚡'; t = `Punchy, récup incomplète (FC moy ${c.hr})`;
+            msg = `Les efforts sont là (anaérobie ${c.ana.toFixed(1)}/5) mais roule encore plus lentement entre les bosses pour vraiment récupérer.`; }
+    }
+    else if (c.key === 'easy') { cls = 'good'; icon = '✅'; t = `Vraie sortie easy (FC ${c.hr})`; msg = 'Exactement ce qui construit ta base — bonus XP +30%.'; }
+    else if (c.key === 'tempo') { cls = 'warn'; icon = '⚠️'; t = `Sortie tempo (FC ${c.hr})`; msg = 'Si c\'était censé être easy, c\'était trop dur. La prochaine : tu peux papoter tout du long.'; }
+    else { cls = 'danger'; icon = '🔥'; t = `Grosse séance (FC ${c.hr})`; msg = 'Bien si c\'était voulu — prévois 1-2 jours faciles derrière.'; }
     if (a.hr_drift_pct != null) {
         const dr = a.hr_drift_pct;
         msg += ` Dérive cardiaque <b>${dr > 0 ? '+' : ''}${dr}%</b> ${dr < 5 ? '— durabilité solide ✅' : dr < 10 ? '— correct' : '— base à renforcer'}.`;
@@ -398,6 +423,7 @@ function renderGoalSpeed() {
     const winRides = (d1, d2) => (DATA.activities || []).filter(a => {
         if (a.type !== 'cycling' || !a.avg_speed_kmh || !a.avg_hr) return false;
         if (a.avg_hr >= 155 || (a.distance_km || 0) < 20) return false;
+        if ((a.training_effect_anaerobic || 0) >= 2) return false;  // punchy ≠ easy, even at low avg HR
         const ago = (now - new Date(a.date)) / 86400000;
         return ago >= d1 && ago < d2;
     });
@@ -800,7 +826,11 @@ const BOSSES = [
 // ── XP ──
 function rideXP(a) {
     const base = (a.duration_min || 0) + (a.elevation_gain || 0) * 0.1;
-    const bonus = (a.avg_hr && a.avg_hr < 155) ? 1.3 : 1.0;  // reward easy (Z2) discipline
+    const ana = a.training_effect_anaerobic || 0;
+    // Reward polarized discipline: pure easy (+30%) or well-executed punchy (+20%).
+    // The grey tempo middle gets no bonus.
+    let bonus = 1.0;
+    if (a.avg_hr && a.avg_hr < 155) bonus = ana >= 2 ? 1.2 : 1.3;
     return Math.round(base * bonus);
 }
 const totalXP = () => cyclingActs().reduce((s, a) => s + rideXP(a), 0);
