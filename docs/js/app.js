@@ -266,6 +266,7 @@ function activityRowHTML(a) {
     const subs = [];
     if (a.avg_hr) subs.push(`${Math.round(a.avg_hr)} bpm`);
     if (a.duration_min) subs.push(fmtMin(Math.round(a.duration_min)));
+    if (a.hr_drift_pct != null) subs.push(`dérive ${a.hr_drift_pct > 0 ? '+' : ''}${a.hr_drift_pct}%`);
     const sub = subs.length ? `<div class="act-sub">${subs.join(' · ')}</div>` : '';
     return `<div class="activity-row type-${cls}">
         <div class="act-head"><span class="act-date">${icon} ${fmtDayFull(a.date)}</span>${badge}</div>
@@ -295,46 +296,16 @@ function renderGlobal(c) {
     document.getElementById('globalDate').textContent =
         d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    // Readiness
-    const ready = rec.garmin_readiness;
-    const disp = readinessDisplay(ready);
-    setText('gReadyScore', ready != null ? ready : '--');
-    const arc = document.getElementById('gReadyArc');
-    arc.style.strokeDashoffset = CIRC_READY * (1 - (ready != null ? Math.min(100, ready) / 100 : 0));
-    arc.style.stroke = disp.color;
-    const lvl = document.getElementById('gReadyLevel');
-    lvl.textContent = rec.readiness_level || '--';
-    lvl.style.color = disp.color;
-    document.getElementById('gReadyFeedback').textContent =
-        (rec.readiness_feedback && READINESS_FEEDBACK[rec.readiness_feedback]) || disp.text;
-    document.getElementById('gReadyTime').textContent =
-        rec.recovery_time_h != null ? `Récup restante : ${rec.recovery_time_h}h` : '';
+    renderVerdict(rec);
 
-    // Advice of the day
-    renderAdvice(ready, rec);
-
-    // Quick metrics
-    setText('gHrv', rec.hrv_last_night);
-    const hs = document.getElementById('gHrvStatus');
-    hs.textContent = rec.hrv_status === 'BALANCED' ? 'équilibrée' : rec.hrv_status === 'UNBALANCED' ? 'déséquilibrée' : '--';
-    hs.style.color = rec.hrv_status === 'BALANCED' ? COLORS.green : rec.hrv_status === 'UNBALANCED' ? COLORS.orange : COLORS.text;
-    setText('gSleep', rec.sleep_score);
-    setText('gRhr', rec.rhr);
-    setText('gStress', rec.stress_avg);
-
-    // This week per sport
-    renderWeekStrip('globalWeek');
-
-    // Last activity
+    // Last ride + automatic coaching verdict on it
     const last = (DATA.activities || [])[0];
     const lastEl = document.getElementById('globalLastAct');
     if (last && lastEl) lastEl.innerHTML = activityRowHTML(last);
+    renderRideVerdict(last);
 
-    // Aerobic form
-    const p = c.profile || {};
-    setText('gVo2', p.vo2max != null ? Math.round(p.vo2max) : '--');
-    setText('gVma', p.vma != null ? p.vma.toFixed(1) : '--');
-    setText('gVdot', p.vdot != null ? Math.round(p.vdot) : '--');
+    renderGoalSpeed();
+    renderWeekReview();
 
     chartsRendered.global = true;
 }
@@ -347,54 +318,153 @@ function readinessDisplay(score) {
     return { text: 'Repos recommandé', color: COLORS.red };
 }
 
-function renderAdvice(ready, rec) {
-    const el = document.getElementById('gAdvice');
-    if (!el) return;
-    let icon, title, msg, cls;
-    if (ready == null) { icon = '⏳'; title = 'Readiness indisponible'; msg = 'Synchronise ta montre pour le calcul du jour.'; cls = 'neutral'; }
-    else if (ready >= 75) { icon = '🟢'; title = 'Feu vert'; msg = 'Tu peux faire ta séance clé du jour (intensité ou sortie longue).'; cls = 'good'; }
-    else if (ready >= 50) { icon = '🟡'; title = 'Modéré'; msg = 'Séance possible mais reste raisonnable — privilégie l\'endurance Z2.'; cls = 'warn'; }
-    else if (ready >= 25) { icon = '🟠'; title = 'Fatigué'; msg = 'Easy / Z2 seulement aujourd\'hui. Pas d\'intensité.'; cls = 'warn'; }
-    else { icon = '🔴'; title = 'Repos'; msg = 'Ton corps encaisse encore. Repos ou récup active (marche, mobilité).'; cls = 'danger'; }
-    el.className = 'advice-card ' + cls;
-    el.innerHTML = `<span class="advice-icon">${icon}</span>
-        <div class="advice-body"><span class="advice-title">${title}</span><span class="advice-msg">${msg}</span></div>`;
+// Current phase of the mentor cycle (Reprise → Endurance → Punchy → Force → Repos)
+function currentPhaseInfo() {
+    const start = new Date(CYCLE_START + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.floor((today - start) / 86400000);
+    if (days < 0) return { key: 'reprise', name: 'Reprise douce' };
+    const w = Math.floor(days / 7);
+    let acc = 0;
+    for (const p of PHASES) { if (w < acc + p.weeks) return { key: p.key, name: p.name }; acc += p.weeks; }
+    return { key: 'done', name: 'Cycle bouclé' };
 }
 
-// Per-sport weekly volume pills (current vs previous week)
-function renderWeekStrip(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    const sports = [
-        { key: 'running', icon: '🏃' },
-        { key: 'walking', icon: '🚶' },
-        { key: 'cycling', icon: '🚴' },
+function phaseSuggestion(ph, fresh) {
+    if (!fresh) return 'Sortie facile 1h-1h30 — tu peux parler tout du long. Les bosses : assis, petit braquet.';
+    switch (ph.key) {
+        case 'punchy':    return "Si l'envie est là : séance côtes — 4-6 punchs courts et francs, récup complète entre.";
+        case 'force':     return 'Si frais : force-vélocité 4-5×5 min gros braquet, assis, en côte régulière.';
+        case 'endurance': return 'Le bon jour pour une sortie longue tranquille (2h+), mange/bois toutes les 20 min.';
+        case 'repos':     return 'Semaine de repos : sortie plaisir courte, rien de plus. Tu te transformes en récupérant.';
+        default:          return 'Reprise : sortie facile, mollets au chaud. Le punch attendra qu\'ils soient à 100%.';
+    }
+}
+
+// THE one card that answers: "do I ride today, and how?"
+function renderVerdict(rec) {
+    const el = document.getElementById('verdictCard');
+    if (!el) return;
+    const r = rec.garmin_readiness;
+    const ph = currentPhaseInfo();
+    let cls, icon, title, sess;
+    if (r == null)      { cls = 'neutral'; icon = '🚴'; title = 'Roule au feeling';   sess = 'Pas de readiness aujourd\'hui — fie-toi aux jambes. ' + phaseSuggestion(ph, false); }
+    else if (r >= 65)   { cls = 'good';    icon = '🟢'; title = 'Feu vert';           sess = phaseSuggestion(ph, true); }
+    else if (r >= 40)   { cls = 'warn';    icon = '🟡'; title = 'Jour tranquille';    sess = phaseSuggestion(ph, false); }
+    else                { cls = 'danger';  icon = '🔴'; title = 'Récupération';       sess = 'Repos, ou 30-45 min très facile pour dérouiller. Écourter = intelligent.'; }
+    const hrvCol = rec.hrv_status === 'BALANCED' ? 'var(--green)' : rec.hrv_status === 'UNBALANCED' ? 'var(--orange)' : 'var(--text)';
+    const metrics = [
+        ['HRV', rec.hrv_last_night != null ? rec.hrv_last_night + '<small>ms</small>' : '--', hrvCol],
+        ['Sommeil', rec.sleep_score != null ? rec.sleep_score : '--', 'var(--text)'],
+        ['FC repos', rec.rhr != null ? rec.rhr : '--', 'var(--text)'],
+        ['Stress', rec.stress_avg != null ? rec.stress_avg : '--', 'var(--text)'],
     ];
-    let totalCurr = 0, totalPrev = 0;
-    sports.forEach(s => {
-        const wk = weeklyByType(s.key);
-        const curr = wk.length ? wk[wk.length - 1].km : 0;
-        const prev = wk.length > 1 ? wk[wk.length - 2].km : 0;
-        // only count current week if last entry is the actual current week
-        const thisWeek = weekKeyOf(new Date().toISOString().slice(0, 10));
-        const currKm = (wk.length && wk[wk.length - 1].week === thisWeek) ? curr : 0;
-        const prevKm = (wk.length && wk[wk.length - 1].week === thisWeek) ? prev : (wk.length ? curr : 0);
-        totalCurr += currKm; totalPrev += prevKm;
-        const change = prevKm > 0 ? ((currKm - prevKm) / prevKm * 100) : (currKm > 0 ? 100 : 0);
-        let cc = 'flat', ct = '—';
-        if (Math.abs(change) >= 1) { cc = change > 0 ? 'up' : 'down'; ct = (change > 0 ? '+' : '') + Math.round(change) + '%'; }
-        container.insertAdjacentHTML('beforeend',
-            `<div class="week-sport"><span class="week-sport-icon">${s.icon}</span>
-             <span class="week-sport-vol">${currKm.toFixed(1)}</span><span class="week-sport-unit">km</span>
-             <span class="week-sport-change ${cc}">${ct}</span></div>`);
+    el.className = 'verdict-card ' + cls;
+    el.innerHTML = `
+        <div class="verdict-top">
+            <span class="verdict-icon">${icon}</span>
+            <div class="verdict-main">
+                <span class="verdict-title">${title} <span class="verdict-phase">· ${ph.name}</span></span>
+                <span class="verdict-sess">${sess}</span>
+            </div>
+            <div class="verdict-score-wrap"><span class="verdict-score">${r != null ? r : '--'}</span><span class="verdict-score-lbl">readiness</span></div>
+        </div>
+        <div class="verdict-metrics">${metrics.map(m => `<span class="vm"><span class="vm-lbl">${m[0]}</span><b style="color:${m[2]}">${m[1]}</b></span>`).join('')}</div>`;
+}
+
+// Coaching verdict on the last ride (80/20 compliance + durability)
+function renderRideVerdict(a) {
+    const el = document.getElementById('rideVerdict');
+    if (!el) return;
+    if (!a || a.type !== 'cycling' || !a.avg_hr) { el.className = ''; el.innerHTML = ''; return; }
+    const hr = Math.round(a.avg_hr);
+    let cls, icon, t, msg;
+    if (hr < 155)      { cls = 'good';   icon = '✅'; t = 'Vraie sortie easy (FC ' + hr + ')'; msg = 'Exactement ce qui construit ta base — bonus XP +30%.'; }
+    else if (hr < 163) { cls = 'warn';   icon = '⚠️'; t = 'Sortie tempo (FC ' + hr + ')';      msg = 'Si c\'était censé être easy, c\'était trop dur. La prochaine : tu peux papoter tout du long.'; }
+    else               { cls = 'danger'; icon = '🔥'; t = 'Grosse séance (FC ' + hr + ')';     msg = 'Bien si c\'était voulu — prévois 1-2 jours faciles derrière.'; }
+    if (a.hr_drift_pct != null) {
+        const dr = a.hr_drift_pct;
+        msg += ` Dérive cardiaque <b>${dr > 0 ? '+' : ''}${dr}%</b> ${dr < 5 ? '— durabilité solide ✅' : dr < 10 ? '— correct' : '— base à renforcer'}.`;
+    }
+    el.className = 'advice-card ' + cls;
+    el.innerHTML = `<span class="advice-icon">${icon}</span><div class="advice-body"><span class="advice-title">${t}</span><span class="advice-msg">${msg}</span></div>`;
+}
+
+// Gauge toward the stated goal: easy rides at 30 km/h
+function renderGoalSpeed() {
+    const el = document.getElementById('goalSpeed');
+    if (!el) return;
+    const now = new Date();
+    const winRides = (d1, d2) => (DATA.activities || []).filter(a => {
+        if (a.type !== 'cycling' || !a.avg_speed_kmh || !a.avg_hr) return false;
+        if (a.avg_hr >= 155 || (a.distance_km || 0) < 20) return false;
+        const ago = (now - new Date(a.date)) / 86400000;
+        return ago >= d1 && ago < d2;
     });
-    const tc = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev * 100) : 0;
-    let tcc = 'flat', tct = '—';
-    if (Math.abs(tc) >= 1) { tcc = tc > 0 ? 'up' : 'down'; tct = (tc > 0 ? '+' : '') + Math.round(tc) + '%'; }
-    container.insertAdjacentHTML('beforeend',
-        `<div class="week-total"><span class="week-total-val">${totalCurr.toFixed(1)}</span>
-         <span class="week-total-label">total km</span><span class="week-sport-change ${tcc}">${tct}</span></div>`);
+    const avg = l => l.length ? l.reduce((s, a) => s + a.avg_speed_kmh, 0) / l.length : null;
+    const cur = winRides(0, 42), v = avg(cur), pv = avg(winRides(42, 84));
+    if (v == null) {
+        el.innerHTML = `<div class="goal-head"><span class="goal-title">🎯 Cap 30 km/h <small>(sorties faciles)</small></span></div>
+            <div class="goal-note">Aucune sortie easy (FC&lt;155, 20 km+) sur 6 semaines — c'est justement le chantier 😉</div>`;
+        return;
+    }
+    const pct = Math.max(0, Math.min(100, (v - 25) / 5 * 100));
+    const delta = pv != null ? `<span style="color:${v >= pv ? 'var(--green)' : 'var(--orange)'}"> · ${v >= pv ? '+' : ''}${(v - pv).toFixed(1)} vs 6 sem av.</span>` : '';
+    el.innerHTML = `
+        <div class="goal-head"><span class="goal-title">🎯 Cap 30 km/h <small>(sorties faciles)</small></span><span class="goal-val">${v.toFixed(1)}<small> km/h</small></span></div>
+        <div class="goal-bar"><div class="goal-fill" style="width:${pct}%"></div>
+            <span class="goal-tick" style="left:40%"></span><span class="goal-tick" style="left:60%"></span><span class="goal-tick" style="left:80%"></span></div>
+        <div class="goal-scale"><span>25</span><span>27</span><span>28</span><span>29</span><span>30</span></div>
+        <div class="goal-note">Moyenne de tes sorties faciles (FC&lt;155) sur 6 semaines · ${cur.length} sortie${cur.length > 1 ? 's' : ''}${delta}</div>`;
+}
+
+// Consecutive weeks with >= 2 rides (consistency is the #1 driver)
+function cyclingStreak() {
+    const counts = {};
+    weeklyByType('cycling').forEach(w => counts[w.week] = w.count);
+    const thisWk = weekKeyOf(new Date().toISOString().slice(0, 10));
+    let streak = 0;
+    if ((counts[thisWk] || 0) >= 2) streak++;
+    const d = new Date(thisWk + 'T00:00:00');
+    while (true) {
+        d.setDate(d.getDate() - 7);
+        if ((counts[ymd(d)] || 0) >= 2) streak++;
+        else break;
+    }
+    return streak;
+}
+
+// Automatic review of last completed week + focus
+function renderWeekReview() {
+    const el = document.getElementById('weekReview');
+    if (!el) return;
+    const thisMon = weekKeyOf(new Date().toISOString().slice(0, 10));
+    const d = new Date(thisMon + 'T00:00:00'); d.setDate(d.getDate() - 7);
+    const lastMon = ymd(d);
+    const d2 = new Date(lastMon + 'T00:00:00'); d2.setDate(d2.getDate() - 7);
+    const prevMon = ymd(d2);
+    const all = weeklyByType('cycling');
+    const w = all.find(x => x.week === lastMon);
+    const p = all.find(x => x.week === prevMon);
+    const streak = cyclingStreak();
+    const head = `<div class="rev-head"><span class="rev-title">📊 Semaine dernière</span><span class="rev-streak">🔥 ${streak} sem d'affilée</span></div>`;
+    if (!w) {
+        el.innerHTML = head + `<div class="rev-line">Semaine off à vélo — ça arrive. Relance la machine cette semaine (2 sorties = la série continue).</div>`;
+        return;
+    }
+    const z = zoneStatsFromActs(activitiesInWeek('cycling', lastMon));
+    const dv = (p && p.km) ? Math.round((w.km - p.km) / p.km * 100) : null;
+    const volLine = `<b>${Math.round(w.km)} km</b> · ${fmtMin(Math.round(w.min))} · ${w.count} sortie${w.count > 1 ? 's' : ''}` +
+        (dv != null ? ` <span style="color:${dv >= 0 ? 'var(--green)' : 'var(--orange)'}">(${dv >= 0 ? '+' : ''}${dv}%)</span>` : '');
+    const easyLine = z.total ? `${z.easyPct}% easy ${z.easyPct >= 70 ? '✅' : '<span style="color:var(--orange)">⚠️ cible 70%+</span>'}` : 'Pas de données FC';
+    const focus = !z.total ? '' :
+        z.easyPct >= 70 ? 'Continue comme ça — la base se construit.' :
+        z.easyPct >= 50 ? 'Focus : encore un cran plus cool sur les jours easy.' :
+                          'Focus : tes sorties faciles doivent être vraiment faciles (tu peux papoter).';
+    el.innerHTML = head +
+        `<div class="rev-line">${volLine}</div>` +
+        `<div class="rev-line">${easyLine}</div>` +
+        (focus ? `<div class="rev-focus">${focus}</div>` : '');
 }
 
 // ════════════════════════════════════════════
@@ -415,6 +485,7 @@ function renderVelo() {
     // Volume trend (16wk) + current load — context, not week-specific
     renderSportVol('veloVolChart', 'cycling', 'veloVolTotal', COLORS.purple, 'veloVol');
     renderAeroProgress();
+    renderDurability();
     renderSportLoad('cycling', { acwr: 'veloAcwr', status: 'veloAcwrStatus', marker: 'veloMarker',
         stress: 'veloStress', trend: 'veloStressTrend', banner: 'veloLoadBanner' });
     chartsRendered.velo = true;
@@ -489,6 +560,32 @@ function renderStrengthReminder() {
 }
 
 // ── Shared sport renderers ──
+
+// Durability: HR drift (1st vs 2nd half) on long rides — the "hold 200W on 4h" metric
+function renderDurability() {
+    const el = document.getElementById('duraCard');
+    if (!el) return;
+    const longs = (DATA.activities || []).filter(a => a.type === 'cycling' && a.hr_drift_pct != null).slice(0, 6);
+    const head = `<div class="vol-header"><span class="vol-title">Durabilité — dérive cardiaque</span><span class="vol-total" id="duraVerdict"></span></div>`;
+    if (!longs.length) {
+        el.innerHTML = head + `<div class="zone-note">Se calcule automatiquement sur tes sorties 2h30+ au fil des syncs. Objectif &lt;5% = tenir l'effort sans dériver.</div>`;
+        return;
+    }
+    const rows = longs.map(a => {
+        const dr = a.hr_drift_pct;
+        const col = dr < 5 ? 'var(--green)' : dr < 10 ? 'var(--gold)' : 'var(--orange)';
+        return `<div class="dura-row"><span>${fmtDateFull(a.date)} · ${Math.round(a.distance_km)} km · ${fmtMin(Math.round(a.duration_min))}</span><b style="color:${col}">${dr > 0 ? '+' : ''}${dr}%</b></div>`;
+    }).join('');
+    const recent = longs.slice(0, 3).map(a => a.hr_drift_pct);
+    const avgDr = recent.reduce((s, v) => s + v, 0) / recent.length;
+    el.innerHTML = head + rows +
+        `<div class="zone-note">FC 2ᵉ moitié vs 1ʳᵉ moitié de tes longues. &lt;5% = base solide — c'est ce qui te fera tenir 200 W sur 4h.</div>`;
+    const verd = document.getElementById('duraVerdict');
+    if (verd) {
+        verd.textContent = avgDr < 5 ? 'solide ✅' : avgDr < 10 ? 'correct' : 'à renforcer';
+        verd.style.color = avgDr < 5 ? 'var(--green)' : avgDr < 10 ? 'var(--gold)' : 'var(--orange)';
+    }
+}
 
 // Aerobic efficiency = speed per cardiac effort (km/h per %HRR), trended monthly.
 // Rising curve = same effort → more speed = "passing caps".
@@ -811,6 +908,7 @@ function renderDefis() {
     renderPowerCard(c);
     renderBossList(c);
     renderBadgeGrid(c);
+    renderNextBadges(c);
     renderProgWeek();
     chartsRendered.defis = true;
 }
@@ -910,6 +1008,32 @@ function renderBadgeGrid(c) {
             tog.textContent = hidden ? 'Réduire ‹' : 'Tout voir ›';
         });
     }
+}
+
+// The 3 closest locked badges — turns gamification into a nudge
+function renderNextBadges(c) {
+    const el = document.getElementById('nextBadges');
+    if (!el) return;
+    const items = [];
+    LADDERS.forEach(L => {
+        const v = L.val(c);
+        const t = L.tiers.find(x => v < x);
+        if (!t) return;
+        const fmtV = x => L.fmt ? L.fmt(+(+x).toFixed(1)) : Math.round(x).toLocaleString('fr-FR');
+        items.push({
+            icon: L.icon, name: L.name, pct: Math.min(99, v / t * 100),
+            txt: `${fmtV(v)} / ${fmtV(t)}${L.unit ? ' ' + L.unit : ''}`,
+        });
+    });
+    items.sort((a, b) => b.pct - a.pct);
+    const top = items.slice(0, 3);
+    if (!top.length) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="nb-title">🎯 Prochains badges</div>` + top.map(i => `
+        <div class="next-badge">
+            <span class="nb-name">${i.icon} ${i.name}</span>
+            <div class="nb-bar"><div class="nb-fill" style="width:${i.pct}%"></div></div>
+            <span class="nb-val">${i.txt}</span>
+        </div>`).join('');
 }
 
 function renderProgWeek() {

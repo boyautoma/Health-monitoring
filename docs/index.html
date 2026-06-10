@@ -6,9 +6,12 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260609l">
+    <link rel="stylesheet" href="css/style.css?v=20260610a">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚴</text></svg>">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="icon.svg">
 </head>
 <body>
     <!-- Login Screen -->
@@ -50,57 +53,19 @@
                 <span class="section-date" id="globalDate">--</span>
             </div>
 
-            <!-- Readiness summary -->
-            <div class="ready-card" id="readyCard">
-                <div class="ready-ring-wrap">
-                    <svg class="ready-ring" viewBox="0 0 120 120">
-                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="9"/>
-                        <circle class="ready-arc" id="gReadyArc" cx="60" cy="60" r="50" fill="none"
-                                stroke="#00f19f" stroke-width="9" stroke-linecap="round"
-                                stroke-dasharray="314.16" stroke-dashoffset="314.16"
-                                transform="rotate(-90 60 60)"/>
-                    </svg>
-                    <div class="ready-center">
-                        <span class="ready-value" id="gReadyScore">--</span>
-                        <span class="ready-max">/100</span>
-                    </div>
-                </div>
-                <div class="ready-info">
-                    <span class="ready-label">TRAINING READINESS</span>
-                    <span class="ready-level" id="gReadyLevel">--</span>
-                    <span class="ready-feedback" id="gReadyFeedback">--</span>
-                    <span class="ready-time" id="gReadyTime"></span>
-                </div>
-            </div>
+            <!-- THE verdict: do I ride today, and how? -->
+            <div class="verdict-card" id="verdictCard"></div>
 
-            <!-- Conseil du jour -->
-            <div class="advice-card" id="gAdvice"></div>
-
-            <!-- Quick metrics -->
-            <div class="quick-grid">
-                <div class="quick-tile"><span class="quick-val" id="gHrv">--</span><span class="quick-lbl">HRV nuit</span><span class="quick-sub" id="gHrvStatus">--</span></div>
-                <div class="quick-tile"><span class="quick-val" id="gSleep">--</span><span class="quick-lbl">Sommeil</span><span class="quick-sub">/100</span></div>
-                <div class="quick-tile"><span class="quick-val" id="gRhr">--</span><span class="quick-lbl">FC repos</span><span class="quick-sub">bpm</span></div>
-                <div class="quick-tile"><span class="quick-val" id="gStress">--</span><span class="quick-lbl">Stress</span><span class="quick-sub">/100</span></div>
-            </div>
-
-            <!-- This week's load -->
-            <div class="block-title">Cette semaine</div>
-            <div class="week-strip" id="globalWeek"></div>
-
-            <!-- Last activity -->
-            <div class="block-title">Dernière séance</div>
+            <!-- Last ride + automatic coaching verdict -->
+            <div class="block-title">Dernière sortie</div>
             <div class="activities-feed" id="globalLastAct"></div>
+            <div id="rideVerdict"></div>
 
-            <!-- Aerobic form -->
-            <div class="block-title">Forme aérobie</div>
-            <div class="ref-strip">
-                <div class="ref-item"><span class="ref-label">VO2max</span><span class="ref-val" id="gVo2">--</span></div>
-                <div class="ref-sep"></div>
-                <div class="ref-item"><span class="ref-label">VMA</span><span class="ref-val" id="gVma">--</span><span class="ref-unit">km/h</span></div>
-                <div class="ref-sep"></div>
-                <div class="ref-item"><span class="ref-label">VDOT</span><span class="ref-val" id="gVdot">--</span></div>
-            </div>
+            <!-- Goal gauge: easy rides at 30 km/h -->
+            <div class="goal-card" id="goalSpeed"></div>
+
+            <!-- Last week review + consistency streak -->
+            <div class="review-card" id="weekReview"></div>
         </section>
 
         <!-- ════════════ VÉLO ════════════ -->
@@ -142,6 +107,9 @@
                 <div class="chart-wrap"><canvas id="aeroChart"></canvas></div>
                 <div class="zone-note" id="aeroNote"></div>
             </div>
+
+            <!-- Durability: HR drift on long rides -->
+            <div class="vol-card" id="duraCard"></div>
 
             <!-- Intensity zone distribution -->
             <div class="zone-card">
@@ -382,6 +350,7 @@
 
             <!-- Badges : résumé + sous-dossier dépliable -->
             <div class="block-title">Badges</div>
+            <div class="next-badges" id="nextBadges"></div>
             <div class="badge-summary" id="badgeSummary"></div>
             <div class="badge-full" id="badgeFull" hidden>
                 <div id="badgeLadders"></div>
@@ -439,6 +408,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260609l"></script>
+    <script src="js/app.js?v=20260610a"></script>
 </body>
 </html>

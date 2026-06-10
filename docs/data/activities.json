@@ -17,7 +17,8 @@
     "training_effect_aerobic": 5.0,
     "training_effect_anaerobic": 2.299999952316284,
     "avg_power": null,
-    "mechanical_stress": 100.0
+    "mechanical_stress": 100.0,
+    "hr_drift_pct": 3.9
   },
   {
     "activityId": 23143412953,
@@ -97,7 +98,8 @@
     "training_effect_aerobic": 4.5,
     "training_effect_anaerobic": 1.7000000476837158,
     "avg_power": null,
-    "mechanical_stress": 100.0
+    "mechanical_stress": 100.0,
+    "hr_drift_pct": 1.2
   },
   {
     "activityId": 23059238743,

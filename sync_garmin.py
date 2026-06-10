@@ -493,10 +493,52 @@ def main():
         }
 
         key = act_id or f"{entry['date']}_{entry['name']}"
+        prev = act_map.get(key)
+        if prev and "hr_drift_pct" in prev:
+            entry["hr_drift_pct"] = prev["hr_drift_pct"]  # keep computed drift on re-upsert
         act_map[key] = entry
 
     # Rebuild sorted list (newest first) -- NO cap
     activities = sorted(act_map.values(), key=lambda x: x.get("date", ""), reverse=True)
+
+    # =====================================================================
+    # Durability: HR drift (1st vs 2nd half) on long rides, via splits.
+    # Cheap: max 2 fetches per run, each ride attempted once ("hr_drift_pct"
+    # key marks it). <5% drift = solid aerobic durability.
+    # =====================================================================
+    DRIFT_MIN_MIN = 150     # rides >= 2h30
+    DRIFT_MAX_FETCH = 2
+    drift_fetched = 0
+    for act in activities:
+        if drift_fetched >= DRIFT_MAX_FETCH:
+            break
+        if act.get("type") != "cycling" or "hr_drift_pct" in act:
+            continue
+        if (act.get("duration_min") or 0) < DRIFT_MIN_MIN:
+            continue
+        act["hr_drift_pct"] = None   # mark attempted — never refetched
+        if not act.get("activityId"):
+            continue
+        drift_fetched += 1
+        splits = safe_call(client.get_activity_splits, act["activityId"])
+        laps = (splits or {}).get("lapDTOs") or []
+        pts = [(l.get("duration") or 0, l.get("averageHR"))
+               for l in laps if l.get("duration") and l.get("averageHR")]
+        total = sum(d for d, _ in pts)
+        if total < 3600 or len(pts) < 4:
+            continue
+        half, cum = total / 2, 0.0
+        h1, h2 = [0.0, 0.0], [0.0, 0.0]     # [hr*dur, dur]
+        for dur, hr in pts:
+            tgt = h1 if cum < half else h2
+            tgt[0] += hr * dur
+            tgt[1] += dur
+            cum += dur
+        if h1[1] and h2[1]:
+            hr1, hr2 = h1[0] / h1[1], h2[0] / h2[1]
+            if hr1 > 60:
+                act["hr_drift_pct"] = round((hr2 - hr1) / hr1 * 100, 1)
+                print(f"  HR drift {act['date']}: {act['hr_drift_pct']}% ({hr1:.0f} -> {hr2:.0f} bpm)")
 
     # =====================================================================
     # 4. WEEKLY VOLUMES: per activity type + total + weekly mechanical stress
