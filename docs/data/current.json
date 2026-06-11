@@ -1,6 +1,6 @@
 {
-  "last_sync": "2026-06-10T20:29:08.168877",
-  "date": "2026-06-10",
+  "last_sync": "2026-06-11T08:31:44.538536",
+  "date": "2026-06-11",
   "profile": {
     "vo2max": 47,
     "vma": 13.43,
@@ -12,26 +12,26 @@
     "hrv_alert_threshold": 59
   },
   "recovery": {
-    "garmin_readiness": 62,
+    "garmin_readiness": 61,
     "readiness_level": "MODERATE",
-    "readiness_feedback": "RECOVERY_IN_PROGRESS",
-    "recovery_time_h": 35.8,
-    "score": 72,
+    "readiness_feedback": "GOOD_SLEEP_HISTORY",
+    "recovery_time_h": 23.7,
+    "score": 65,
     "level": "moderate",
-    "hrv_last_night": 80,
-    "hrv_7day_avg": 63,
+    "hrv_last_night": 56,
+    "hrv_7day_avg": 64,
     "hrv_status": "BALANCED",
-    "hrv_baseline_low": 60,
+    "hrv_baseline_low": 59,
     "hrv_baseline_high": 77,
-    "rhr": 45,
-    "sleep_score": 96,
-    "sleep_duration_min": 478,
-    "deep_sleep_min": 117,
-    "light_sleep_min": 244,
-    "rem_sleep_min": 117,
-    "awake_min": 9,
-    "stress_avg": 10,
-    "max_stress": 64,
-    "training_readiness": 62
+    "rhr": 52,
+    "sleep_score": 65,
+    "sleep_duration_min": 450,
+    "deep_sleep_min": 88,
+    "light_sleep_min": 343,
+    "rem_sleep_min": 19,
+    "awake_min": 31,
+    "stress_avg": 25,
+    "max_stress": 73,
+    "training_readiness": 61
   }
 }
