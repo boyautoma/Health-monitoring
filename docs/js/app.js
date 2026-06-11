@@ -1142,26 +1142,58 @@ function renderRecovery(c) {
     hs.textContent = statusText;
     hs.style.color = level.color;
 
-    setMetricRing('hrvArc',    'hrvVal',    rec.hrv_7day_avg, 80, COLORS.teal);
-    setMetricRing('rhrArc',    'rhrVal',    rec.rhr,          null, COLORS.orange, true);
-    setMetricRing('sleepArc',  'sleepVal',  rec.sleep_score,  100, COLORS.purple);
-    setMetricRing('stressArc', 'stressVal', rec.stress_avg,   100, COLORS.red, true);
+    // Context-aware metrics: each ring is colored by where YOU sit in YOUR
+    // personal range, and the range itself is shown under the value.
 
-    if (rec.hrv_7day_avg != null)
-        document.getElementById('hrvSub').textContent = `moy. 7j · ${rec.hrv_last_night || '--'} nuit`;
+    // HRV 7j vs Garmin balanced range (e.g. 59-77)
+    const lo = rec.hrv_baseline_low != null ? rec.hrv_baseline_low : 59;
+    const hi = rec.hrv_baseline_high != null ? rec.hrv_baseline_high : 77;
+    const h7 = rec.hrv_7day_avg;
+    paintMetric('hrvArc', 'hrvVal', h7,
+        h7 != null ? (h7 - (lo - 15)) / ((hi + 5) - (lo - 15)) : 0,
+        h7 == null ? '#555' : h7 < lo ? COLORS.orange : COLORS.green);
+    setSub('hrvSub', `nuit ${rec.hrv_last_night != null ? rec.hrv_last_night : '--'} · plage ${lo}-${hi}`);
+
+    // RHR vs personal normal band (44-55, baseline ~50)
+    const rhrV = rec.rhr;
+    paintMetric('rhrArc', 'rhrVal', rhrV,
+        rhrV != null ? (70 - rhrV) / 30 : 0,
+        rhrV == null ? '#555' : rhrV <= 55 ? COLORS.green : rhrV <= 58 ? COLORS.gold : COLORS.orange);
+    setSub('rhrSub', 'normale 44-55');
+
+    // Sleep score (Garmin bands: ≥80 good, 60-79 fair, <60 poor)
+    const ss = rec.sleep_score;
+    paintMetric('sleepArc', 'sleepVal', ss,
+        ss != null ? ss / 100 : 0,
+        ss == null ? '#555' : ss >= 80 ? COLORS.green : ss >= 60 ? COLORS.gold : COLORS.orange);
+    setSub('sleepSub', `${rec.sleep_duration_min != null ? fmtMin(rec.sleep_duration_min) + ' · ' : ''}bon ≥ 80`);
+
+    // Stress (Garmin bands: ≤25 calm, 26-50 moderate, >50 high)
+    const st = rec.stress_avg;
+    paintMetric('stressArc', 'stressVal', st,
+        st != null ? st / 100 : 0,
+        st == null ? '#555' : st <= 25 ? COLORS.green : st <= 50 ? COLORS.gold : COLORS.orange);
+    setSub('stressSub', 'calme ≤ 25 · haut > 50');
 
     setText('readinessVal', rec.recovery_time_h != null ? rec.recovery_time_h + 'h' : '--');
     setText('hrv7Val', rec.hrv_7day_avg != null ? rec.hrv_7day_avg + 'ms' : '--');
     setText('sleepDurVal', rec.sleep_duration_min != null ? fmtMin(rec.sleep_duration_min) : '--');
 }
 
-function setMetricRing(arcId, valId, value, maxVal, color, inverted) {
+function paintMetric(arcId, valId, value, pct, color) {
     const arc = document.getElementById(arcId);
     const el = document.getElementById(valId);
-    if (value == null) { el.textContent = '--'; return; }
+    if (!arc || !el) return;
+    if (value == null) { el.textContent = '--'; el.style.color = ''; arc.style.strokeDashoffset = CIRC_SM; return; }
     el.textContent = Math.round(value);
-    let pct = inverted ? Math.max(0, 1 - value / (maxVal || 100)) : (maxVal ? Math.min(1, value / maxVal) : 0);
-    arc.style.strokeDashoffset = CIRC_SM * (1 - pct);
+    el.style.color = color;
+    arc.style.stroke = color;
+    arc.style.strokeDashoffset = CIRC_SM * (1 - Math.max(0.04, Math.min(1, pct)));
+}
+
+function setSub(id, txt) {
+    const e = document.getElementById(id);
+    if (e) e.textContent = txt;
 }
 
 function renderTrends(days) {

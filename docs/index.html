@@ -6,7 +6,7 @@
     <title>AppCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260610c">
+    <link rel="stylesheet" href="css/style.css?v=20260611a">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="manifest" href="manifest.json">
@@ -254,7 +254,7 @@
                         </svg>
                         <span class="metric-ring-val" id="rhrVal">--</span>
                     </div>
-                    <div class="metric-info"><span class="metric-label">FC REPOS</span><span class="metric-sub">bpm</span></div>
+                    <div class="metric-info"><span class="metric-label">FC REPOS</span><span class="metric-sub" id="rhrSub">bpm</span></div>
                 </div>
                 <div class="metric-card" data-metric="sleep">
                     <div class="metric-ring-wrap">
@@ -274,7 +274,7 @@
                         </svg>
                         <span class="metric-ring-val" id="stressVal">--</span>
                     </div>
-                    <div class="metric-info"><span class="metric-label">STRESS</span><span class="metric-sub">/100</span></div>
+                    <div class="metric-info"><span class="metric-label">STRESS</span><span class="metric-sub" id="stressSub">/100</span></div>
                 </div>
             </div>
 
@@ -408,6 +408,6 @@
         });
     })();
     </script>
-    <script src="js/app.js?v=20260610c"></script>
+    <script src="js/app.js?v=20260611a"></script>
 </body>
 </html>
