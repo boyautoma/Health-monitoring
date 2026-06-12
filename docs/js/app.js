@@ -1372,25 +1372,60 @@ function fmtMin(min) { if (!min) return '0m'; const h = Math.floor(min / 60), m 
 function fmtDate(dateStr) { if (!dateStr) return ''; const p = dateStr.split('-'); return `${p[2]}/${p[1]}`; }
 function fmtDateFull(dateStr) { if (!dateStr) return ''; try { return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); } catch { return dateStr; } }
 
-// ── Manual Sync button ──────────────────────
+// ── Manual Sync button → NAS ────────────────
+// Writes a .sync-request file on GitHub; the NAS container polls it every 60s
+// and runs the sync from the home IP (never rate-limited by Garmin).
 (function() {
     const btn = document.getElementById('syncBtn');
     if (!btn) return;
+    const API = 'https://api.github.com/repos/boyautoma/Health-monitoring/contents/.sync-request';
     btn.addEventListener('click', async () => {
         let token = localStorage.getItem('gh_pat');
         if (!token) {
-            token = prompt('GitHub Personal Access Token (une seule fois)\n\nRepository: Health-monitoring · Permission Actions: Read and Write');
+            token = prompt('GitHub Personal Access Token (une seule fois)\n\nRepository: Health-monitoring · Permission Contents: Read and Write');
             if (!token) return;
             localStorage.setItem('gh_pat', token.trim()); token = token.trim();
         }
         btn.className = 'sync-btn syncing';
         try {
-            const res = await fetch('https://api.github.com/repos/boyautoma/Health-monitoring/actions/workflows/sync.yml/dispatches',
-                { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }, body: JSON.stringify({ ref: 'main' }) });
-            if (res.status === 204) { btn.className = 'sync-btn success'; setTimeout(() => btn.className = 'sync-btn', 3000); }
-            else if (res.status === 401 || res.status === 403) { localStorage.removeItem('gh_pat'); btn.className = 'sync-btn error'; setTimeout(() => btn.className = 'sync-btn', 3000); alert('Token invalide. Reclique pour en saisir un nouveau.'); }
-            else { btn.className = 'sync-btn error'; setTimeout(() => btn.className = 'sync-btn', 3000); alert(`Erreur ${res.status}`); }
-        } catch (e) { btn.className = 'sync-btn error'; setTimeout(() => btn.className = 'sync-btn', 3000); alert('Erreur réseau: ' + e.message); }
+            const hdr = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' };
+            // sha of the existing request file (needed to overwrite it)
+            let sha = null;
+            const g = await fetch(API + '?t=' + Date.now(), { headers: hdr });
+            if (g.status === 200) sha = (await g.json()).sha;
+            const body = { message: 'sync: demande manuelle (dashboard)', content: btoa(new Date().toISOString()) };
+            if (sha) body.sha = sha;
+            const r = await fetch(API, { method: 'PUT', headers: hdr, body: JSON.stringify(body) });
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('gh_pat');
+                throw new Error('Token invalide ou permissions manquantes (Contents: Read/Write). Reclique pour en saisir un nouveau.');
+            }
+            if (!r.ok) throw new Error('Erreur ' + r.status);
+
+            // Request sent — now wait for the NAS sync + Pages redeploy (~1-3 min)
+            const before = (DATA.current || {}).last_sync;
+            const t0 = Date.now();
+            const timer = setInterval(async () => {
+                try {
+                    const c = await fetchJSON('data/current.json');
+                    if (c.last_sync !== before) {
+                        clearInterval(timer);
+                        chartsRendered = {};
+                        await loadData();
+                        btn.className = 'sync-btn success';
+                        setTimeout(() => btn.className = 'sync-btn', 4000);
+                    } else if (Date.now() - t0 > 6 * 60000) {
+                        clearInterval(timer);
+                        btn.className = 'sync-btn';
+                        alert('Demande envoyée au NAS ✅ — la sync arrivera d\'ici quelques minutes, recharge la page plus tard.');
+                    }
+                } catch (e) { /* retry next tick */ }
+            }, 20000);
+        } catch (e) {
+            btn.className = 'sync-btn error';
+            setTimeout(() => btn.className = 'sync-btn', 3000);
+            alert(e.message || 'Erreur réseau');
+        }
     });
 })();
 
