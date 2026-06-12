@@ -28,3 +28,4 @@ Thumbs.db
 @eaDir/
 Token.txt
 memory/
+nas/.env

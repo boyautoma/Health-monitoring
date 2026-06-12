@@ -1,0 +1,12 @@
+services:
+  appcoach-sync:
+    build: .
+    container_name: appcoach-sync
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
+    env_file: .env
+    volumes:
+      # Le conteneur ne voit QUE ce sous-dossier (./data), rien d'autre du NAS.
+      - ./data:/data
+    # Aucun port exposé, aucun accès au reste du système.
