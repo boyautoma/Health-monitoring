@@ -29,3 +29,4 @@ Thumbs.db
 Token.txt
 memory/
 nas/.env
+nas/tokens-seed/
