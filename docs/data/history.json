@@ -1,7 +1,7 @@
 [
   {
     "date": "2026-06-16",
-    "recovery_score": 80,
+    "recovery_score": 78,
     "hrv_7day_avg": 70,
     "hrv_last_night": 73,
     "hrv_status": "BALANCED",
@@ -16,11 +16,11 @@
     "awake_min": 3,
     "bedtime": "03:29",
     "wake_time": "11:01",
-    "stress_avg": 14,
-    "training_readiness": 48,
-    "readiness_level": "LOW",
-    "readiness_feedback": "FOCUS_ON_ENERGY_LEVELS",
-    "recovery_time_h": 34.6,
+    "stress_avg": 27,
+    "training_readiness": 12,
+    "readiness_level": "POOR",
+    "readiness_feedback": "IMPROVED_BY_NAPPING",
+    "recovery_time_h": 72.0,
     "vo2max": null
   },
   {
