@@ -16,11 +16,11 @@
     "awake_min": 1,
     "bedtime": "03:24",
     "wake_time": "10:55",
-    "stress_avg": 27,
-    "training_readiness": 68,
-    "readiness_level": "MODERATE",
-    "readiness_feedback": "BOOSTED_BY_GOOD_SLEEP",
-    "recovery_time_h": 19.2,
+    "stress_avg": 30,
+    "training_readiness": 75,
+    "readiness_level": "HIGH",
+    "readiness_feedback": "RESTED_AND_READY",
+    "recovery_time_h": 9.6,
     "vo2max": null
   },
   {
