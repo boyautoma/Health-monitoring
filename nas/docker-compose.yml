@@ -9,4 +9,7 @@ services:
     volumes:
       # Le conteneur ne voit QUE ce sous-dossier (./data), rien d'autre du NAS.
       - ./data:/data
+      # Script monté en direct : modifier le script + "Redémarrer" suffit,
+      # plus besoin de reconstruire l'image.
+      - ./entrypoint.sh:/entrypoint.sh:ro
     # Aucun port exposé, aucun accès au reste du système.

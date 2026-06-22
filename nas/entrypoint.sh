@@ -1,8 +1,10 @@
 #!/bin/bash
-# AppCoach — sync Garmin depuis le NAS (IP maison = pas de ban Garmin).
-# - Runs planifiés à 08:05 et 20:35 (heure de Paris)
-# - Écoute les demandes manuelles du bouton dashboard (fichier .sync-request
-#   sur GitHub, vérifié toutes les 60s)
+# AppCoach — sync Garmin depuis le NAS (IP maison = jamais banni par Garmin).
+# - Sync automatique toutes les 2h, toute la journée : attrape les données de
+#   la nuit dès que ta montre les a envoyées à Garmin, peu importe ton heure de
+#   lever. Tu n'as donc (quasi) jamais besoin du bouton manuel.
+# - Écoute aussi les demandes du bouton dashboard (fichier .sync-request,
+#   vérifié toutes les 60s).
 # Totalement isolé : ne voit que /data. Aucun port ouvert.
 set -u
 
@@ -11,11 +13,10 @@ TOKENS_DIR=/data/tokens
 STATE_DIR=/data/state
 REPO_URL="https://x-access-token:${GH_PAT}@github.com/boyautoma/Health-monitoring.git"
 export API_REQ="https://api.github.com/repos/boyautoma/Health-monitoring/contents/.sync-request"
-SLOTS="08:05 20:35"
+EVERY_SEC=7200          # sync auto toutes les 2 heures
 
 log() { echo "[$(date '+%F %T')] $*"; }
 
-# sha of the current manual-request file on GitHub ("" if absent/unreachable)
 request_sha() {
 python3 - <<'PY'
 import os, json, urllib.request
@@ -44,13 +45,12 @@ sync_once() {
     if [ -f "$TOKENS_DIR/oauth1_token.json" ]; then
         cp "$TOKENS_DIR"/*.json "$REPO_DIR/.garmin_tokens/" 2>/dev/null
     else
-        log "ERREUR: pas de tokens dans /data/tokens — copie oauth1_token.json et oauth2_token.json dedans"
+        log "ERREUR: pas de tokens dans /data/tokens"
         return 1
     fi
 
     ( cd "$REPO_DIR" && python sync_garmin.py --fast )
     rc=$?
-
     cp "$REPO_DIR"/.garmin_tokens/*.json "$TOKENS_DIR"/ 2>/dev/null
 
     if [ $rc -eq 0 ]; then
@@ -68,40 +68,32 @@ sync_once() {
 
 mkdir -p "$STATE_DIR"
 
-# Run de démarrage
+# Sync au démarrage
 sync_once
-
-# Les créneaux déjà passés aujourd'hui sont marqués faits (le run de démarrage couvre)
-for t in $SLOTS; do
-    if [ "$(date +%s)" -ge "$(date -d "today $t" +%s)" ]; then
-        date +%F > "$STATE_DIR/slot_${t/:/}"
-    fi
-done
-# La demande manuelle en cours (s'il y en a une) est considérée traitée
+last_auto=$(date +%s)
+# La demande manuelle en cours (s'il y en a une) est considérée déjà traitée
 request_sha > "$STATE_DIR/handled_request"
 
-log "en veille — créneaux $SLOTS + écoute du bouton (60s)"
+log "en veille — sync auto toutes les 2h + écoute du bouton (60s)"
 
 while true; do
     sleep 60
+    now=$(date +%s)
 
-    # 1) Créneaux planifiés
-    today=$(date +%F)
-    for t in $SLOTS; do
-        sf="$STATE_DIR/slot_${t/:/}"
-        if [ "$(date +%s)" -ge "$(date -d "today $t" +%s)" ] && [ "$(cat "$sf" 2>/dev/null)" != "$today" ]; then
-            log "run planifié ($t)"
-            sync_once
-            echo "$today" > "$sf"
-        fi
-    done
+    # 1) Sync automatique toutes les 2h
+    if [ $(( now - last_auto )) -ge $EVERY_SEC ]; then
+        log "sync auto (intervalle 2h)"
+        sync_once
+        last_auto=$(date +%s)
+    fi
 
     # 2) Demande manuelle (bouton dashboard)
     sha=$(request_sha)
     handled=$(cat "$STATE_DIR/handled_request" 2>/dev/null || echo "")
     if [ -n "$sha" ] && [ "$sha" != "$handled" ]; then
-        log "demande manuelle détectée (bouton dashboard)"
+        log "demande manuelle détectée (bouton)"
         sync_once
         echo "$sha" > "$STATE_DIR/handled_request"
+        last_auto=$(date +%s)
     fi
 done

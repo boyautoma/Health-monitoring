@@ -7,6 +7,6 @@ RUN apt-get update \
 RUN pip install --no-cache-dir garminconnect==0.2.38 garth
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Lancé via bash (le script est monté en volume, pas besoin du bit +x)
+ENTRYPOINT ["bash", "/entrypoint.sh"]
