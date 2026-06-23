@@ -17,10 +17,10 @@
     "bedtime": "04:12",
     "wake_time": "11:39",
     "stress_avg": 25,
-    "training_readiness": 76,
-    "readiness_level": "HIGH",
-    "readiness_feedback": "ENERGIZING_NAP",
-    "recovery_time_h": null,
+    "training_readiness": 14,
+    "readiness_level": "POOR",
+    "readiness_feedback": "IMPROVED_BY_NAPPING",
+    "recovery_time_h": 72.0,
     "vo2max": null
   },
   {

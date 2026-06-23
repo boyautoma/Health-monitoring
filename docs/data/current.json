@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-06-23T21:01:14.902291",
+  "last_sync": "2026-06-23T23:02:21.776027",
   "date": "2026-06-23",
   "profile": {
     "vo2max": 47,
@@ -12,10 +12,10 @@
     "hrv_alert_threshold": 59
   },
   "recovery": {
-    "garmin_readiness": 76,
-    "readiness_level": "HIGH",
-    "readiness_feedback": "ENERGIZING_NAP",
-    "recovery_time_h": null,
+    "garmin_readiness": 14,
+    "readiness_level": "POOR",
+    "readiness_feedback": "IMPROVED_BY_NAPPING",
+    "recovery_time_h": 72.0,
     "score": 69,
     "level": "moderate",
     "hrv_last_night": 66,
@@ -32,6 +32,6 @@
     "awake_min": 7,
     "stress_avg": 25,
     "max_stress": 93,
-    "training_readiness": 76
+    "training_readiness": 14
   }
 }
