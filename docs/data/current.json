@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-06-24T15:40:47.286711",
+  "last_sync": "2026-06-24T17:41:58.155512",
   "date": "2026-06-24",
   "profile": {
     "vo2max": 47,
@@ -30,8 +30,8 @@
     "light_sleep_min": 312,
     "rem_sleep_min": 20,
     "awake_min": 11,
-    "stress_avg": 31,
-    "max_stress": 82,
+    "stress_avg": 37,
+    "max_stress": 91,
     "training_readiness": 13
   }
 }
