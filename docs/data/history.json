@@ -17,10 +17,10 @@
     "bedtime": "03:35",
     "wake_time": "10:54",
     "stress_avg": 37,
-    "training_readiness": 13,
-    "readiness_level": "POOR",
-    "readiness_feedback": "LET_YOUR_BODY_RECOVER",
-    "recovery_time_h": 59.0,
+    "training_readiness": 25,
+    "readiness_level": "LOW",
+    "readiness_feedback": "HIGH_RECOVERY_NEEDS",
+    "recovery_time_h": 49.5,
     "vo2max": null
   },
   {
