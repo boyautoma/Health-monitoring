@@ -725,5 +725,10 @@
     "total": 106.0,
     "weekly_mechanical_stress": 190.0,
     "cycling": 106.0
+  },
+  "2026-07-06": {
+    "total": 30.9,
+    "weekly_mechanical_stress": 71.6,
+    "cycling": 30.9
   }
 }
