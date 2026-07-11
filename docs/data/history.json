@@ -1,7 +1,7 @@
 [
   {
     "date": "2026-07-11",
-    "recovery_score": 61,
+    "recovery_score": 60,
     "hrv_7day_avg": 62,
     "hrv_last_night": 75,
     "hrv_status": "BALANCED",
@@ -16,7 +16,7 @@
     "awake_min": 15,
     "bedtime": "03:46",
     "wake_time": "10:18",
-    "stress_avg": 34,
+    "stress_avg": 38,
     "training_readiness": 27,
     "readiness_level": "LOW",
     "readiness_feedback": "FOCUS_ON_ENERGY_LEVELS",
