@@ -1,5 +1,5 @@
 {
-  "last_sync": "2026-07-11T04:26:08.271323",
+  "last_sync": "2026-07-11T06:26:43.201565",
   "date": "2026-07-11",
   "profile": {
     "vo2max": 47,
@@ -12,10 +12,10 @@
     "hrv_alert_threshold": 59
   },
   "recovery": {
-    "garmin_readiness": 25,
-    "readiness_level": "LOW",
-    "readiness_feedback": "LISTEN_TO_YOUR_BODY",
-    "recovery_time_h": 41.5,
+    "garmin_readiness": 23,
+    "readiness_level": "POOR",
+    "readiness_feedback": "TIME_TO_SLOW_DOWN",
+    "recovery_time_h": 39.5,
     "score": 44,
     "level": "low",
     "hrv_last_night": null,
@@ -32,6 +32,6 @@
     "awake_min": 0,
     "stress_avg": null,
     "max_stress": null,
-    "training_readiness": 25
+    "training_readiness": 23
   }
 }

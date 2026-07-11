@@ -17,10 +17,10 @@
     "bedtime": null,
     "wake_time": null,
     "stress_avg": null,
-    "training_readiness": 25,
-    "readiness_level": "LOW",
-    "readiness_feedback": "LISTEN_TO_YOUR_BODY",
-    "recovery_time_h": 41.5,
+    "training_readiness": 23,
+    "readiness_level": "POOR",
+    "readiness_feedback": "TIME_TO_SLOW_DOWN",
+    "recovery_time_h": 39.5,
     "vo2max": null
   },
   {
